@@ -1,0 +1,53 @@
+name: inception
+
+services:
+  nginx:
+    image: nginx:alpine3.18
+    # build: srcs/requirements/nginx
+    depends_on:
+      - wordpress
+    container_name: nginx
+    restart: always
+    volumes:
+      - /home/${LOGIN}/data/wordpress:/var/www/html
+      - /home/${LOGIN}/srcs/requirements/nginx/tools/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8443:443"
+    networks:
+      - inception
+  wordpress:
+    image: wordpress:6.5-php8.3-fpm-alpine
+    # build: srcs/requirements/wordpress
+    depends_on:
+      - mariadb
+    container_name: wordpress
+    restart: always
+    volumes:
+      - /home/${LOGIN}/data/wordpress:/var/www/html
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      - inception
+  mariadb:
+    image: mariadb:10.11
+    # build: srcs/requirements/mariadb
+    container_name: mariadb
+    restart: always
+    volumes:
+      - /home/${LOGIN}/srcs/requirements/mariadb/tools/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - /home/${LOGIN}/data/mariadb:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      - inception
+
+networks:
+  inception:
+    name: inception
+    driver: bridge

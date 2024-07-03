@@ -1,0 +1,151 @@
+#!/usr/bin/env ansible-playbook
+---
+- name: Inception setup for Debian
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: true
+  tasks:
+
+    - name: Gather only facts returned by os_family, architecture, distribution
+      ansible.builtin.setup:
+        gather_subset:
+          - '!all'
+          - '!min'
+          - os_family
+          - architecture
+          - distribution
+    
+    - name: Ensure that OS family is Debian and that architecture and distribution are defined
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.os_family == "Debian"
+          - ansible_facts.architecture is defined
+          - ansible_facts.distribution is defined
+        quiet: true
+
+    - name: Set Ansible architecture
+      ansible.builtin.set_fact:
+        ansible_architecture: "{{ 'amd64' if ansible_facts.architecture == 'x86_64' else 'arm64' if ansible_facts.architecture == 'aarch64' else ansible_facts.architecture }}"
+
+    - name: Update installed packages
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+        update_cache: true
+        clean: true
+
+    - name: Install unattended-upgrades and sudo packages
+      ansible.builtin.apt:
+        name:
+          - unattended-upgrades
+          - sudo
+        state: latest
+
+    - name: Edit /etc/apt/apt.conf.d/02periodic
+      ansible.builtin.lineinfile:
+        path: /etc/apt/apt.conf.d/02periodic
+        line: "{{ item }}"
+        create: true
+      loop:
+        - 'APT::Periodic::Enable "1";'
+        - 'APT::Periodic::Update-Package-Lists "1";'
+        - 'APT::Periodic::Download-Upgradeable-Packages "1";'
+        - 'APT::Periodic::Unattended-Upgrade "1";'
+        - 'APT::Periodic::AutocleanInterval "1";'
+        - 'APT::Periodic::Verbose "1";'
+
+    - name: Edit /etc/sudoers
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: "^Defaults\t{{ item.key }}"
+        insertafter: '^Defaults'
+        line: "Defaults\t{{ item.value }}"
+      loop:
+        - { key: 'passwd_tries', value: 'passwd_tries=3' }
+        - { key: 'log_input', value: 'log_input' }
+        - { key: 'log_output', value: 'log_output' }
+        - { key: 'iolog_dir', value: 'iolog_dir="/var/log/sudo"' }
+        - { key: 'requiretty', value: 'requiretty' }
+
+    - name: Install make and git packages
+      ansible.builtin.apt:
+        name:
+          - make
+          - git
+        state: latest
+
+    - name: Set dotfiles git directory
+      ansible.builtin.set_fact:
+        dotfiles_git_directory: "{{ lookup('ansible.builtin.env', 'HOME') }}/.dotfiles"
+
+    - name: Download dotfiles
+      ansible.builtin.git:
+        repo: https://github.com/abdelbenamara/dotfiles.git
+        dest: "{{ dotfiles_git_directory }}"
+        single_branch: true
+        update: false
+
+    - name: Make dotfiles
+      community.general.make:
+        chdir: "{{ dotfiles_git_directory }}"
+
+    - name: Install ca-certificates and curl packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+        state: latest
+
+    - name: Create /etc/apt/keyrings
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker official GPG key
+      ansible.builtin.get_url:
+        url: "https://download.docker.com/linux/{{ ansible_facts.distribution | lower }}/gpg"
+        dest: /etc/apt/keyrings/docker.asc
+        mode: a+r
+
+    - name: Edit /etc/apt/sources.list.d/docker.list
+      ansible.builtin.lineinfile:
+        path: /etc/apt/sources.list.d/docker.list
+        line: "deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_facts.distribution | lower }} {{ ansible_facts.distribution_release }} stable"
+        create: true
+
+    - name: Update installed packages
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+        update_cache: true
+        clean: true
+
+    - name: Install docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin and docker-compose-plugin packages
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: latest
+
+    - name: Download Inception
+      ansible.builtin.git:
+        repo: https://github.com/abdelbenamara/Inception.git
+        dest: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception"
+        single_branch: yes
+
+    - name: Make Inception
+      community.general.make:
+        chdir: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception"
+
+    - name: Remove dependencies that are no longer required
+      ansible.builtin.apt:
+        autoremove: true
+
+    - name: Remove useless packages from the cache
+      ansible.builtin.apt:
+        autoclean: true

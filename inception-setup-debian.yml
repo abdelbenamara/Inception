@@ -2,6 +2,8 @@
 ---
 - name: Inception setup for Debian
   hosts: localhost
+  vars:
+    project_login: changeit
   connection: local
   gather_facts: false
   become: true
@@ -137,6 +139,54 @@
         repo: https://github.com/abdelbenamara/Inception.git
         dest: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception"
         single_branch: yes
+
+    - name: Edit Inception/srcs/.env
+      ansible.builtin.lineinfile:
+        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/.env"
+        regexp: "^LOGIN"
+        line: "LOGIN={{ project_login }}"
+
+    - name: Set common name (CN)
+      ansible.builtin.set_fact:
+        common_name: "www.{{ project_login }}.42.fr"
+
+    - name: Generate an OpenSSL private key with the default values (4096 bits, RSA)
+      community.crypto.openssl_privatekey:
+        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+
+    - name: Create certificate signing request (CSR) for CA certificate
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        country_name: FR
+        state_or_province_name: Paris
+        locality_name: Paris
+        organization_name: 42
+        organizational_unit_name: inception
+        common_name: "{{ common_name }}"
+      register: ca_csr
+
+    - name: Create self-signed CA certificate from CSR
+      community.crypto.x509_certificate:
+        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.ca"
+        csr_content: "{{ ca_csr.csr }}"
+        privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        provider: selfsigned
+      
+    - name: Create certificate signing request (CSR) for new certificate
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        subject_alt_name:
+          - "DNS:{{ project_login }}.42.fr"
+          - "DNS:{{ common_name }}"
+      register: crt_csr
+
+    - name: Generate an OpenSSL certificate signed with your own CA certificate
+      community.crypto.x509_certificate:
+        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.crt"
+        csr_content: "{{ crt_csr.csr }}"
+        ownca_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.ca"
+        ownca_privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        provider: ownca
 
     - name: Make Inception
       community.general.make:

@@ -6,13 +6,13 @@
 #    By: abenamar <abenamar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/05/09 12:36:15 by abenamar          #+#    #+#              #
-#    Updated: 2024/06/30 21:48:30 by abenamar         ###   ########.fr        #
+#    Updated: 2024/07/06 21:32:42 by abenamar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME := srcs/docker-compose.yml
 
-DATA := data
+DATA := ${HOME}/data
 
 RM := rm -f
 

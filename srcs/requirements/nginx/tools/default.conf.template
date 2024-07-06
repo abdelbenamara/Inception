@@ -1,9 +1,9 @@
 server {
   listen                          443 ssl;
   listen                     [::]:443 ssl;
-  server_name                     www.login.42.fr login.42.fr;
-  ssl_certificate                 www.login.42.fr.crt;
-  ssl_certificate_key             www.login.42.fr.key;
+  server_name                     www.${DOMAIN_NAME} ${DOMAIN_NAME};
+  ssl_certificate                 www.${DOMAIN_NAME}.crt;
+  ssl_certificate_key             www.${DOMAIN_NAME}.key;
   ssl_protocols                   TLSv1.2 TLSv1.3;
   
   root                            /var/www/html;

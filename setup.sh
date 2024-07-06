@@ -9,9 +9,10 @@ main() {
     source inception-venv/bin/activate
     pip install --upgrade pip && pip install --upgrade setuptools wheel && pip install ansible-core
     ansible-galaxy collection install community.general
+    ansible-galaxy collection install community.crypto
 
     # Setup inception project
-    wget https://raw.githubusercontent.com/abdelbenamara/Inception/main/inception-debian-setup.yml
+    wget https://raw.githubusercontent.com/abdelbenamara/Inception/main/inception-setup-debian.yml
     ansible-playbook inception-setup-debian.yml
 }
 

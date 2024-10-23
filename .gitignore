@@ -1,5 +1,6 @@
 # Project
-
-*.key
 *.ca
 *.crt
+*.key
+data/
+inception-venv/

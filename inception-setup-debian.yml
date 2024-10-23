@@ -3,7 +3,7 @@
 - name: Inception setup for Debian
   hosts: localhost
   vars:
-    project_login: changeit
+    login: changeit
   connection: local
   gather_facts: false
   become: true
@@ -143,12 +143,12 @@
     - name: Edit Inception/srcs/.env
       ansible.builtin.lineinfile:
         path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/.env"
-        regexp: "^LOGIN"
-        line: "LOGIN={{ project_login }}"
+        regexp: '^LOGIN'
+        line: "LOGIN={{ login }}"
 
     - name: Set common name (CN)
       ansible.builtin.set_fact:
-        common_name: "www.{{ project_login }}.42.fr"
+        common_name: "www.{{ login }}.42.fr"
 
     - name: Generate an OpenSSL private key with the default values (4096 bits, RSA)
       community.crypto.openssl_privatekey:
@@ -157,12 +157,13 @@
     - name: Create certificate signing request (CSR) for CA certificate
       community.crypto.openssl_csr_pipe:
         privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
-        country_name: FR
-        state_or_province_name: Paris
-        locality_name: Paris
-        organization_name: 42
-        organizational_unit_name: inception
+        country_name: 'FR'
+        state_or_province_name: 'Ile-de-France'
+        locality_name: 'Paris'
+        organization_name: '42'
+        organizational_unit_name: 'Inception'
         common_name: "{{ common_name }}"
+        use_common_name_for_san: false
       register: ca_csr
 
     - name: Create self-signed CA certificate from CSR
@@ -175,9 +176,14 @@
     - name: Create certificate signing request (CSR) for new certificate
       community.crypto.openssl_csr_pipe:
         privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        common_name: "{{ common_name }}"
+        organization_name: '42'
+        organizational_unit_name: 'Inception'
         subject_alt_name:
-          - "DNS:{{ project_login }}.42.fr"
+          - 'DNS:127.0.0.1'
+          - 'DNS:localhost'
           - "DNS:{{ common_name }}"
+          - "DNS:{{ login }}.42.fr"
       register: crt_csr
 
     - name: Generate an OpenSSL certificate signed with your own CA certificate
@@ -187,6 +193,22 @@
         ownca_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.ca"
         ownca_privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
         provider: ownca
+
+    - name: Edit /etc/hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.0\.1'
+        line: "127.0.0.1\tlocalhost {{ common_name }} {{ login }}.42.fr"
+
+    - name: Create mariadb volume directory
+      ansible.builtin.file:
+        path: "/home/{{ login }}/data/mariadb"
+        state: directory
+
+    - name: Create wordpress volume directory
+      ansible.builtin.file:
+        path: "/home/{{ login }}/data/wordpress"
+        state: directory
 
     - name: Make Inception
       community.general.make:

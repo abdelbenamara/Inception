@@ -3,32 +3,41 @@
 - name: Inception setup for Debian
   hosts: localhost
   vars:
-    login: changeit
+    db_password: changeit
+    db_root_password: changeit
   connection: local
   gather_facts: false
   become: true
   tasks:
 
-    - name: Gather only facts returned by os_family, architecture, distribution
+    - name: "Gather only facts returned by \
+        architecture, distribution, os_family, user_dir, user_id"
       ansible.builtin.setup:
         gather_subset:
           - '!all'
           - '!min'
-          - os_family
           - architecture
           - distribution
+          - os_family
+          - user_dir
+          - user_id
+      become: false
     
-    - name: Ensure that OS family is Debian and that architecture and distribution are defined
+    - name: "Ensure that OS family is Debian and \
+            that architecture and distribution are defined"
       ansible.builtin.assert:
         that:
-          - ansible_facts.os_family == "Debian"
-          - ansible_facts.architecture is defined
-          - ansible_facts.distribution is defined
+          - ansible_architecture is defined
+          - ansible_distribution is defined
+          - ansible_os_family == "Debian"
         quiet: true
 
     - name: Set Ansible architecture
       ansible.builtin.set_fact:
-        ansible_architecture: "{{ 'amd64' if ansible_facts.architecture == 'x86_64' else 'arm64' if ansible_facts.architecture == 'aarch64' else ansible_facts.architecture }}"
+        ansible_architecture: "\
+          {{ 'amd64' if ansible_architecture == 'x86_64' \
+          else 'arm64' if ansible_architecture == 'aarch64' \
+          else ansible_architecture }}"
 
     - name: Update installed packages
       ansible.builtin.apt:
@@ -69,6 +78,12 @@
         - { key: 'log_output', value: 'log_output' }
         - { key: 'iolog_dir', value: 'iolog_dir="/var/log/sudo"' }
         - { key: 'requiretty', value: 'requiretty' }
+    
+    - name: Add user to sudoers
+      ansible.builtin.user:
+        append: true
+        name: "{{ ansible_user_id }}"
+        groups: sudo
 
     - name: Install make and git packages
       ansible.builtin.apt:
@@ -79,7 +94,7 @@
 
     - name: Set dotfiles git directory
       ansible.builtin.set_fact:
-        dotfiles_git_directory: "{{ lookup('ansible.builtin.env', 'HOME') }}/.dotfiles"
+        dotfiles_git_directory: "{{ ansible_user_dir }}/.dotfiles"
 
     - name: Download dotfiles
       ansible.builtin.git:
@@ -107,14 +122,18 @@
 
     - name: Download Docker official GPG key
       ansible.builtin.get_url:
-        url: "https://download.docker.com/linux/{{ ansible_facts.distribution | lower }}/gpg"
+        url: "https://download.docker.com/linux/\
+          {{ ansible_distribution | lower }}/gpg"
         dest: /etc/apt/keyrings/docker.asc
         mode: a+r
 
     - name: Edit /etc/apt/sources.list.d/docker.list
       ansible.builtin.lineinfile:
         path: /etc/apt/sources.list.d/docker.list
-        line: "deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_facts.distribution | lower }} {{ ansible_facts.distribution_release }} stable"
+        line: "deb [arch={{ ansible_architecture }} \
+          signed-by=/etc/apt/keyrings/docker.asc] \
+          https://download.docker.com/linux/{{ ansible_distribution | lower }} \
+          {{ ansible_distribution_release }} stable"
         create: true
 
     - name: Update installed packages
@@ -124,7 +143,8 @@
         update_cache: true
         clean: true
 
-    - name: Install docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin and docker-compose-plugin packages
+    - name: "Install docker-ce, docker-ce-cli, containerd.io, \
+        docker-buildx-plugin and docker-compose-plugin packages"
       ansible.builtin.apt:
         name:
           - docker-ce
@@ -137,45 +157,57 @@
     - name: Download Inception
       ansible.builtin.git:
         repo: https://github.com/abdelbenamara/Inception.git
-        dest: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception"
+        dest: "{{ ansible_user_dir }}/Inception"
         single_branch: yes
+    
+    - name: Create Inception/srcs/.env from Inception/srcs/template.env
+      ansible.builtin.copy:
+        src: "{{ ansible_user_dir }}/Inception/srcs/template.env"
+        dest: "{{ ansible_user_dir }}/Inception/srcs/.env"
 
     - name: Edit Inception/srcs/.env
       ansible.builtin.lineinfile:
-        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/.env"
+        path: "{{ ansible_user_dir }}/Inception/srcs/.env"
         regexp: '^LOGIN'
-        line: "LOGIN={{ login }}"
+        line: "LOGIN={{ ansible_user_id }}"
 
     - name: Set common name (CN)
       ansible.builtin.set_fact:
-        common_name: "www.{{ login }}.42.fr"
+        common_name: "www.{{ ansible_user_id }}.42.fr"
+    
+    - name: Set ssl certificate common path
+      ansible.builtin.set_fact:
+        common_path: "{{ ansible_user_dir }}/\
+          Inception/srcs/requirements/tools/{{ common_name }}"
 
-    - name: Generate an OpenSSL private key with the default values (4096 bits, RSA)
+    - name: Generate an OpenSSL private key
       community.crypto.openssl_privatekey:
-        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        path: "{{ common_path }}.key"
+        size: 4096
+        type: 'RSA'
 
     - name: Create certificate signing request (CSR) for CA certificate
       community.crypto.openssl_csr_pipe:
-        privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        privatekey_path: "{{ common_path }}.key"
         country_name: 'FR'
         state_or_province_name: 'Ile-de-France'
         locality_name: 'Paris'
         organization_name: '42'
-        organizational_unit_name: 'Inception'
+        organizational_unit_name: '42 School'
         common_name: "{{ common_name }}"
         use_common_name_for_san: false
       register: ca_csr
 
     - name: Create self-signed CA certificate from CSR
       community.crypto.x509_certificate:
-        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.ca"
+        path: "{{ common_path }}.ca"
         csr_content: "{{ ca_csr.csr }}"
-        privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        privatekey_path: "{{ common_path }}.key"
         provider: selfsigned
       
     - name: Create certificate signing request (CSR) for new certificate
       community.crypto.openssl_csr_pipe:
-        privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        privatekey_path: "{{ common_path }}.key"
         common_name: "{{ common_name }}"
         organization_name: '42'
         organizational_unit_name: 'Inception'
@@ -183,36 +215,54 @@
           - 'DNS:127.0.0.1'
           - 'DNS:localhost'
           - "DNS:{{ common_name }}"
-          - "DNS:{{ login }}.42.fr"
+          - "DNS:{{ ansible_user_id }}.42.fr"
       register: crt_csr
 
     - name: Generate an OpenSSL certificate signed with your own CA certificate
       community.crypto.x509_certificate:
-        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.crt"
+        path: "{{ common_path }}.crt"
         csr_content: "{{ crt_csr.csr }}"
-        ownca_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.ca"
-        ownca_privatekey_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception/srcs/{{ common_name }}.key"
+        ownca_path: "{{ common_path }}.ca"
+        ownca_privatekey_path: "{{ common_path }}.key"
         provider: ownca
 
     - name: Edit /etc/hosts
       ansible.builtin.lineinfile:
         path: /etc/hosts
         regexp: '^127\.0\.0\.1'
-        line: "127.0.0.1\tlocalhost {{ common_name }} {{ login }}.42.fr"
+        line: "127.0.0.1\tlocalhost {{ common_name }} \
+          {{ ansible_user_id }}.42.fr"
+    
+    - name: Create Inception/secrets
+      ansible.builtin.file:
+        path: "{{ ansible_user_dir }}/Inception/secrets"
+        state: directory
+    
+    - name: Edit Inception/secrets/db_password.txt
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_user_dir }}/Inception/secrets/db_password.txt"
+        line: "{{ db_password }}"
+        create: true
+
+    - name: Edit Inception/secrets/db_root_password.txt
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_user_dir }}/Inception/secrets/db_root_password.txt"
+        line: "{{ db_root_password }}"
+        create: true
 
     - name: Create mariadb volume directory
       ansible.builtin.file:
-        path: "/home/{{ login }}/data/mariadb"
+        path: "{{ ansible_user_dir }}/data/mariadb"
         state: directory
 
     - name: Create wordpress volume directory
       ansible.builtin.file:
-        path: "/home/{{ login }}/data/wordpress"
+        path: "{{ ansible_user_dir }}/data/wordpress"
         state: directory
 
     - name: Make Inception
       community.general.make:
-        chdir: "{{ lookup('ansible.builtin.env', 'HOME') }}/Inception"
+        chdir: "{{ ansible_user_dir }}/Inception"
 
     - name: Remove dependencies that are no longer required
       ansible.builtin.apt:

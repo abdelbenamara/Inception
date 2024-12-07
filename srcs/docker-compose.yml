@@ -1,6 +1,52 @@
 name: inception
 
 services:
+  mariadb:
+    image: mariadb:11.4
+    # build: srcs/requirements/mariadb
+    container_name: mariadb
+    restart: always
+    volumes:
+      - "/home/${LOGIN}/Inception/srcs/requirements/mariadb/tools/\
+          init.sh:/docker-entrypoint-initdb.d/init.sh:ro"
+      - mariadb:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+       - db_root_password
+       - db_password
+    networks:
+      - inception-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  wordpress:
+    image: wordpress:6.6-php8.3-fpm-alpine
+    # build: srcs/requirements/wordpress
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    container_name: wordpress
+    restart: always
+    volumes:
+      - wordpress:/var/www/html
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+       - db_password
+    networks:
+      - inception-network
+
   nginx:
     image: nginx:alpine3.19
     # build: srcs/requirements/nginx
@@ -9,9 +55,12 @@ services:
     container_name: nginx
     restart: always
     volumes:
-      - /home/${LOGIN}/Inception/srcs/${SSL_CERTIFICATE}:/etc/nginx/${SSL_CERTIFICATE}
-      - /home/${LOGIN}/Inception/srcs/${SSL_KEY}:/etc/nginx/${SSL_KEY}
-      - /home/${LOGIN}/Inception/srcs/requirements/nginx/tools/default.conf.template:/etc/nginx/templates/default.conf.template
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_CERTIFICATE}:\
+          /etc/nginx/${SSL_CERTIFICATE}"
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_KEY}:\
+          /etc/nginx/${SSL_KEY}"
+      - "/home/${LOGIN}/Inception/srcs/requirements/nginx/tools/\
+          default.conf.template:/etc/nginx/templates/default.conf.template"
       - wordpress:/var/www/html
     environment:
       DOMAIN_NAME: ${DOMAIN_NAME}
@@ -21,42 +70,17 @@ services:
       - "443:443"
     networks:
       - inception-network
-  wordpress:
-    image: wordpress:6.6-php8.3-fpm-alpine
-    # build: srcs/requirements/wordpress
-    depends_on:
-      - mariadb
-    container_name: wordpress
-    restart: always
-    volumes:
-      - wordpress:/var/www/html
-    environment:
-      WORDPRESS_DB_HOST: mariadb
-      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
-      WORDPRESS_DB_USER: ${MYSQL_USER}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
-    networks:
-      - inception-network
-  mariadb:
-    image: mariadb:11.4
-    # build: srcs/requirements/mariadb
-    container_name: mariadb
-    restart: always
-    volumes:
-      - /home/${LOGIN}/Inception/srcs/requirements/mariadb/tools/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
-      - mariadb:/var/lib/mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    networks:
-      - inception-network
 
 networks:
   inception-network:
     name: inception-network
     driver: bridge
+
+secrets:
+   db_password:
+     file: ../secrets/db_password.txt
+   db_root_password:
+     file: ../secrets/db_root_password.txt
 
 volumes:
   wordpress:

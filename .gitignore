@@ -1,6 +1,8 @@
 # Project
+srcs/.env
 *.ca
 *.crt
 *.key
 data/
 inception-venv/
+secrets/

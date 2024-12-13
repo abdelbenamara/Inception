@@ -3,7 +3,7 @@
 set -eo pipefail
 
 main() {
-	if [ - "/var/www/html/wp-config.php" ]; then
+	if [ -s "/var/www/html/wp-config.php" ]; then
 		echo "wp-config.php already present, skipping creation"
 	else
 		echo "wp-config.php not found, creating...."

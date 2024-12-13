@@ -29,6 +29,7 @@ main() {
 
 		sed -e 's/^\s*\(user =\).*/\1 www-data/' \
 			-e 's/^\s*\(group =\).*/\1 www-data/' \
+			-e 's/^\s*\(listen =\).*/\1 0.0.0.0:9000/' \
 			-i /etc/php83/php-fpm.d/www.conf
 	fi
 

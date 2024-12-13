@@ -28,6 +28,9 @@ main() {
 		fi
 	fi
 
+	user='www-data'
+	group='www-data'
+
 	exec "$@"
 }
 

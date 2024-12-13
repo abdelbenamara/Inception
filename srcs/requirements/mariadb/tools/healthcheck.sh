@@ -12,7 +12,7 @@ _process_sql() {
 }
 
 connect() {
-	conn_status=$(_process_sql  -e 'select @@skip_networking')
+	conn_status=$(_process_sql -e 'select @@skip_networking')
 	return $conn_status
 }
 
@@ -48,6 +48,6 @@ done
 if [ "$conn_status" != "0" ]; then
 	# we didn't pass a connnect test, so the current status is suspicious
 	# return what connect thinks.
-	connect
+	connect > /dev/null 2>&1
 	exit $?
 fi

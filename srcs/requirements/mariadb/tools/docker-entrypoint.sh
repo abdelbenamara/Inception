@@ -42,7 +42,7 @@ docker_temp_server_start() {
 
 docker_setup_database() {
 	_log "Running mariadb-tzinfo-to-sql"
-	mariadb-tzinfo-to-sql /usr/share/zoneinfo | _process_sql
+	mariadb-tzinfo-to-sql /usr/share/zoneinfo | _process_sql > /dev/null
 	
 	_log "Running mariadb-secure-installation"
 	sed -e '/^\s*#\+.*/d' <<-EOF | mariadb-secure-installation > /dev/null

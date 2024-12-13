@@ -252,6 +252,7 @@
       loop:
         - "db_password.txt"
         - "db_root_password.txt"
+        - "wp_admin_password.txt"
       become: false
 
     - name: Create mariadb volume directory

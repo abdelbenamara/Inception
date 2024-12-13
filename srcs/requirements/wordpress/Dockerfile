@@ -22,4 +22,4 @@ EXPOSE 9000
 
 STOPSIGNAL SIGQUIT
 
-CMD ["php-fpm83", "-F"]
+CMD ["php-fpm83", "-F", "-R"]

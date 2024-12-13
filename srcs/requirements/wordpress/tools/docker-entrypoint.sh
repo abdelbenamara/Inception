@@ -21,7 +21,7 @@ main() {
 			--dbhost="$WORDPRESS_DB_HOST" \
 			--dbname="$WORDPRESS_DB_NAME" \
 			--dbuser="$WORDPRESS_DB_USER" \
-			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE
+			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null
 	fi
 
 	exec "$@"

@@ -2,13 +2,10 @@ name: inception
 
 services:
   mariadb:
-    image: mariadb:11.4
-    # build: srcs/requirements/mariadb
+    build: requirements/mariadb
     container_name: mariadb
     restart: always
     volumes:
-      - "/home/${LOGIN}/Inception/srcs/requirements/mariadb/tools/\
-          init.sh:/docker-entrypoint-initdb.d/init.sh:ro"
       - mariadb:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
@@ -28,8 +25,8 @@ services:
       retries: 3
 
   wordpress:
-    image: wordpress:6.6-php8.3-fpm-alpine
-    # build: srcs/requirements/wordpress
+    # image: wordpress:6.6-php8.3-fpm-alpine
+    build: requirements/wordpress
     depends_on:
       mariadb:
         condition: service_healthy
@@ -48,8 +45,7 @@ services:
       - inception-network
 
   nginx:
-    image: nginx:alpine3.19
-    # build: srcs/requirements/nginx
+    build: requirements/nginx
     depends_on:
       - wordpress
     container_name: nginx
@@ -59,7 +55,7 @@ services:
           /etc/nginx/${SSL_CERTIFICATE}"
       - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_KEY}:\
           /etc/nginx/${SSL_KEY}"
-      - "/home/${LOGIN}/Inception/srcs/requirements/nginx/tools/\
+      - "/home/${LOGIN}/Inception/srcs/requirements/nginx/conf/\
           default.conf.template:/etc/nginx/templates/default.conf.template"
       - wordpress:/var/www/html
     environment:

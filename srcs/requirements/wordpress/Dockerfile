@@ -10,9 +10,10 @@ RUN set -x \
 	&& wget -O /usr/local/bin/wp \
 	https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
 	&& chmod +x /usr/local/bin/wp \
-	&& /usr/local/bin/wp core download
+	&& /usr/local/bin/wp core download \
+	&& chmod 777 -R /var/www/html
 
-WORKDIR /var/www/html		
+WORKDIR /var/www/html
 VOLUME ["/var/www/html"]
 
 COPY --chown=root --chmod=755 tools /usr/local/bin/

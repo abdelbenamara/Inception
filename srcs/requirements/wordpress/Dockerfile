@@ -6,7 +6,8 @@ RUN set -x \
 		fcgi php83-cgi mariadb-client php83-mysqli \
 	&& wget -O /usr/local/bin/wp \
 	https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
-	&& chmod +x /usr/local/bin/wp \	
+	&& chmod +x /usr/local/bin/wp \
+	&& mkdir -p /var/www/html \
 	&& /usr/local/bin/wp core download --path=/var/www/html \
 	&& chown -R www-data:www-data /var/www/html \
 	&& chmod 1777 /var/www/html

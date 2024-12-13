@@ -17,11 +17,15 @@ main() {
 			fi
 		done
 
-		/usr/local/bin/wp config create \
+		if /usr/local/bin/wp config create \
 			--dbhost="$WORDPRESS_DB_HOST" \
 			--dbname="$WORDPRESS_DB_NAME" \
 			--dbuser="$WORDPRESS_DB_USER" \
-			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null
+			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null; then
+			echo "wp-config.php created"
+		else
+			echo "Failed to create wp-config.php" >&2
+		fi
 	fi
 
 	exec "$@"

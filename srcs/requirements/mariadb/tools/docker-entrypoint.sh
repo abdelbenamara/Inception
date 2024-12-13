@@ -88,9 +88,9 @@ main() {
 	done
 
 	if [ -d "/run/mysqld" ]; then
-		_log "mysqld already present, skipping creation"
+		_log "mysqld directory already present, skipping creation"
 	else
-		_log "mysqld not found, creating...."
+		_log "mysqld directory not found, creating...."
 		mkdir -p /run/mysqld && chown -R mysql:mysql /run/mysqld
 	fi
 

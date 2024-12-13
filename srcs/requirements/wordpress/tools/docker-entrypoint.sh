@@ -26,10 +26,11 @@ main() {
 		else
 			echo "Failed to create wp-config.php" >&2
 		fi
-	fi
 
-	user='www-data'
-	group='www-data'
+		sed -e 's/^\s*\(user =\).*/\1 www-data/' \
+			-e 's/^\s*\(group =\).*/\1 www-data/' \
+			-i /etc/php83/php-fpm.d/www.conf
+	fi
 
 	exec "$@"
 }

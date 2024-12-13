@@ -4,11 +4,12 @@ set -eo pipefail
 
 main() {
 	if [ -s "/var/www/html/wp-config.php" ]; then
-		echo "wp-config.php already present, skipping creation"
+		echo "wp-config.php file already present, skipping creation"
 	else
-		echo "wp-config.php not found, creating...."
+		echo "wp-config.php file not found, creating...."
 
-		for var in DB_HOST DB_NAME DB_USER DB_PASSWORD_FILE; do
+		for var in DB_HOST DB_NAME DB_USER DB_PASSWORD_FILE URL TITLE \
+			ADMIN_USER ADMIN_EMAIL ADMIN_PASSWORD_FILE; do
 			eval wp_var="\$WORDPRESS_${var}"
 
 			if [ -z "$wp_var" ]; then
@@ -17,14 +18,26 @@ main() {
 			fi
 		done
 
-		if /usr/local/bin/wp config create \
+		if wp config create \
 			--dbhost="$WORDPRESS_DB_HOST" \
 			--dbname="$WORDPRESS_DB_NAME" \
 			--dbuser="$WORDPRESS_DB_USER" \
-			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null; then
-			echo "wp-config.php created"
+			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null 2>&1; then
+			echo "wp-config.php file created"
 		else
-			echo "Failed to create wp-config.php" >&2
+			echo "Failed to create wp-config.php file" >&2
+		fi
+
+		if wp core install \
+			--url=$WORDPRESS_URL \
+			--title=$WORDPRESS_TITLE \
+			--admin_user=$WORDPRESS_ADMIN_USER \
+			--admin_email=$WORDPRESS_ADMIN_EMAIL \
+			--prompt=admin_password < $WORDPRESS_ADMIN_PASSWORD_FILE \
+			> /dev/null 2>&1; then
+			echo "WordPress installed successfully"
+		else
+			echo "Failed to install WordPress"
 		fi
 
 		sed -e 's/^\s*\(user =\).*/\1 www-data/' \

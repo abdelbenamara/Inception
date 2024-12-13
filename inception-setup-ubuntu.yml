@@ -170,6 +170,12 @@
       ansible.builtin.set_fact:
         common_name: "www.{{ ansible_user_id }}.42.fr"
     
+    - name: Create mariadb volume directory
+      ansible.builtin.file:
+        path: "{{ ansible_user_dir }}/Inception/srcs/requirements/tools"
+        state: directory
+      become: false
+    
     - name: Set ssl certificate common path
       ansible.builtin.set_fact:
         common_path: "{{ ansible_user_dir }}/\
@@ -180,6 +186,7 @@
         path: "{{ common_path }}.key"
         size: 4096
         type: 'RSA'
+      become: false
 
     - name: Create certificate signing request (CSR) for CA certificate
       community.crypto.openssl_csr_pipe:
@@ -199,6 +206,7 @@
         csr_content: "{{ ca_csr.csr }}"
         privatekey_path: "{{ common_path }}.key"
         provider: selfsigned
+      become: false
       
     - name: Create certificate signing request (CSR) for new certificate
       community.crypto.openssl_csr_pipe:
@@ -220,6 +228,7 @@
         ownca_path: "{{ common_path }}.ca"
         ownca_privatekey_path: "{{ common_path }}.key"
         provider: ownca
+      become: false
 
     - name: Edit /etc/hosts
       ansible.builtin.lineinfile:
@@ -232,6 +241,7 @@
       ansible.builtin.file:
         path: "{{ ansible_user_dir }}/Inception/secrets"
         state: directory
+      become: false
     
     - name: Edit secrets
       ansible.builtin.lineinfile:
@@ -242,16 +252,19 @@
       loop:
         - "db_password.txt"
         - "db_root_password.txt"
+      become: false
 
     - name: Create mariadb volume directory
       ansible.builtin.file:
         path: "{{ ansible_user_dir }}/data/mariadb"
         state: directory
+      become: false
 
     - name: Create wordpress volume directory
       ansible.builtin.file:
         path: "{{ ansible_user_dir }}/data/wordpress"
         state: directory
+      become: false
 
     - name: Make Inception
       community.general.make:

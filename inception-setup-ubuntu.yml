@@ -1,10 +1,7 @@
 #!/usr/bin/env ansible-playbook
 ---
-- name: Inception setup for Debian
+- name: Inception setup for Ubuntu
   hosts: localhost
-  vars:
-    db_password: changeit
-    db_root_password: changeit
   connection: local
   gather_facts: false
   become: true
@@ -78,12 +75,6 @@
         - { key: 'log_output', value: 'log_output' }
         - { key: 'iolog_dir', value: 'iolog_dir="/var/log/sudo"' }
         - { key: 'requiretty', value: 'requiretty' }
-    
-    - name: Add user to sudoers
-      ansible.builtin.user:
-        append: true
-        name: "{{ ansible_user_id }}"
-        groups: sudo
 
     - name: Install make and git packages
       ansible.builtin.apt:
@@ -95,6 +86,7 @@
     - name: Set dotfiles git directory
       ansible.builtin.set_fact:
         dotfiles_git_directory: "{{ ansible_user_dir }}/.dotfiles"
+      become: false
 
     - name: Download dotfiles
       ansible.builtin.git:
@@ -102,6 +94,7 @@
         dest: "{{ dotfiles_git_directory }}"
         single_branch: true
         update: false
+      become: false
 
     - name: Make dotfiles
       community.general.make:
@@ -159,6 +152,8 @@
         repo: https://github.com/abdelbenamara/Inception.git
         dest: "{{ ansible_user_dir }}/Inception"
         single_branch: yes
+        update: false
+      become: false
     
     - name: Create Inception/srcs/.env from Inception/srcs/template.env
       ansible.builtin.copy:
@@ -233,22 +228,20 @@
         line: "127.0.0.1\tlocalhost {{ common_name }} \
           {{ ansible_user_id }}.42.fr"
     
-    - name: Create Inception/secrets
+    - name: Create secrets directory
       ansible.builtin.file:
         path: "{{ ansible_user_dir }}/Inception/secrets"
         state: directory
     
-    - name: Edit Inception/secrets/db_password.txt
+    - name: Edit secrets
       ansible.builtin.lineinfile:
-        path: "{{ ansible_user_dir }}/Inception/secrets/db_password.txt"
-        line: "{{ db_password }}"
+        path: "{{ ansible_user_dir }}/Inception/secrets/{{ item }}"
+        regexp: "^.*"
+        line: "{{ lookup('ansible.builtin.password', '/dev/null') }}"
         create: true
-
-    - name: Edit Inception/secrets/db_root_password.txt
-      ansible.builtin.lineinfile:
-        path: "{{ ansible_user_dir }}/Inception/secrets/db_root_password.txt"
-        line: "{{ db_root_password }}"
-        create: true
+      loop:
+        - "db_password.txt"
+        - "db_root_password.txt"
 
     - name: Create mariadb volume directory
       ansible.builtin.file:

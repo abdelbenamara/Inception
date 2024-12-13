@@ -6,15 +6,6 @@ _log() {
 	echo "$(date -I) [Note] [Entrypoint]: $*"
 }
 
-_read_secret() {
-    local secret_file="$1"
-    if [ -f "$secret_file" ] && [ -r "$secret_file" ]; then
-        cat "$secret_file"
-    else
-        echo ""
-    fi
-}
-
 _process_sql() {
 	mariadb --no-defaults --skip-ssl --skip-ssl-verify-server-cert \
 		--database=mysql "$@"
@@ -92,7 +83,7 @@ main() {
     	eval mysql_file_var="\$MYSQL_${var}_FILE"
 		
 		if [ -z "$mysql_var" ] && [ -n "$mysql_file_var" ]; then
-			eval "export MYSQL_${var}=$(_read_secret "$mysql_file_var")"
+			eval "export MYSQL_${var}=$(cat "$mysql_file_var")"
 		fi
 	done
 
@@ -100,8 +91,7 @@ main() {
 		_log "mysqld already present, skipping creation"
 	else
 		_log "mysqld not found, creating...."
-		mkdir -p /run/mysqld
-		chown -R mysql:mysql /run/mysqld
+		mkdir -p /run/mysqld && chown -R mysql:mysql /run/mysqld
 	fi
 
 	if [ -d /var/lib/mysql/mysql ]; then

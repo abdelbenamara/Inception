@@ -6,7 +6,7 @@
 #    By: abenamar <abenamar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/05/09 12:36:15 by abenamar          #+#    #+#              #
-#    Updated: 2024/10/23 17:21:29 by abenamar         ###   ########.fr        #
+#    Updated: 2024/12/13 17:27:15 by abenamar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,7 +18,7 @@ DATA := /home/$(LOGIN)/data
 
 RM := rm -f
 
-all: up
+all: build up
 
 build:
 	docker compose -f $(NAME) build

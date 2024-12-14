@@ -18,12 +18,14 @@ down:
 	docker compose -f $(NAME) down
 
 clean: down
-	$(RM) -r $(DATA)/mariadb && mkdir $(DATA)/mariadb
-	$(RM) -r $(DATA)/wordpress && mkdir $(DATA)/wordpress
+	$(RM) -r $(DATA)/wordpress/*
+	$(RM) -r $(DATA)/mariadb/*
+	$(RM) -r $(DATA)/redis/*
 
 fclean: clean
-	docker volume rm inception_mariadb
 	docker volume rm inception_wordpress
+	docker volume rm inception_mariadb
+	docker volume rm inception_redis
 
 re: fclean all
 

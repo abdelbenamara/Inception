@@ -13,4 +13,4 @@ EXPOSE 6379
 
 STOPSIGNAL SIGQUIT
 
-CMD ["redis-server"]
+CMD ["redis-server", "--protected-mode", "no"]

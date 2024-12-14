@@ -99,6 +99,7 @@
     - name: Make dotfiles
       community.general.make:
         chdir: "{{ dotfiles_git_directory }}"
+      become: false
 
     - name: Install ca-certificates and curl packages
       ansible.builtin.apt:

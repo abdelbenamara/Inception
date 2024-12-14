@@ -38,7 +38,8 @@ main() {
 			--admin_email=$WORDPRESS_ADMIN_EMAIL \
 			--prompt=admin_password < $WORDPRESS_ADMIN_PASSWORD_FILE \
 			--skip-email > /dev/null \
-			&& wp plugin install redis-cache --activate > /dev/null; then
+			&& wp plugin install redis-cache --activate > /dev/null \
+			&& wp redis enable > /dev/null; then
 			echo "WordPress installed successfully"
 		else
 			echo "Failed to install WordPress"

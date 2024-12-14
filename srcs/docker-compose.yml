@@ -44,9 +44,13 @@ services:
       WORDPRESS_ADMIN_USER: ${WORDPRESS_ADMIN_USER}
       WORDPRESS_ADMIN_EMAIL: ${WORDPRESS_ADMIN_EMAIL}
       WORDPRESS_ADMIN_PASSWORD_FILE: /run/secrets/wp_admin_password
+      WORDPRESS_USER_LOGIN: ${WORDPRESS_USER_LOGIN}
+      WORDPRESS_USER_EMAIL: ${WORDPRESS_USER_EMAIL}
+      WORDPRESS_USER_PASSWORD_FILE: /run/secrets/wp_admin_password
     secrets:
        - db_password
        - wp_admin_password
+       - wp_user_password
     networks:
       - inception-network
 
@@ -85,6 +89,8 @@ secrets:
      file: ../secrets/db_root_password.txt
    wp_admin_password:
      file: ../secrets/wp_admin_password.txt
+   wp_user_password:
+     file: ../secrets/wp_user_password.txt
 
 volumes:
   wordpress:

@@ -25,7 +25,8 @@ main() {
 			--dbuser="$WORDPRESS_DB_USER" \
 			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null \
 			&& wp config set WP_REDIS_HOST "redis" \
-			&& wp config set WP_REDIS_PORT "6379"; then
+			&& wp config set WP_REDIS_PORT "6379" \
+			&& wp plugin install redis-cache --activate; then
 			echo "wp-config.php file created successfully"
 		else
 			echo "Failed to create wp-config.php file" >&2

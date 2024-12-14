@@ -22,7 +22,7 @@ main() {
 			--dbhost="$WORDPRESS_DB_HOST" \
 			--dbname="$WORDPRESS_DB_NAME" \
 			--dbuser="$WORDPRESS_DB_USER" \
-			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null 2>&1; then
+			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null; then
 			echo "wp-config.php file created"
 		else
 			echo "Failed to create wp-config.php file" >&2
@@ -34,7 +34,7 @@ main() {
 			--admin_user=$WORDPRESS_ADMIN_USER \
 			--admin_email=$WORDPRESS_ADMIN_EMAIL \
 			--prompt=admin_password < $WORDPRESS_ADMIN_PASSWORD_FILE \
-			> /dev/null 2>&1; then
+			--skip-email > /dev/null; then
 			echo "WordPress installed successfully"
 		else
 			echo "Failed to install WordPress"

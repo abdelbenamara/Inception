@@ -23,12 +23,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+  
+  redis:
+    build: requirements/redis
+    container_name: redis
+    restart: always
+    volumes:
+      - redis:/data
+    networks:
+      - inception-network
 
   wordpress:
     build: requirements/wordpress
     depends_on:
       mariadb:
         condition: service_healthy
+      redis:
+        condition: service_started
     container_name: wordpress
     restart: always
     volumes:
@@ -45,7 +56,7 @@ services:
       WORDPRESS_ADMIN_PASSWORD_FILE: /run/secrets/wp_admin_password
       WORDPRESS_USER_LOGIN: ${WORDPRESS_USER_LOGIN}
       WORDPRESS_USER_EMAIL: ${WORDPRESS_USER_EMAIL}
-      WORDPRESS_USER_PASSWORD_FILE: /run/secrets/wp_admin_password
+      WORDPRESS_USER_PASSWORD_FILE: /run/secrets/wp_user_password
     secrets:
        - db_password
        - wp_admin_password
@@ -102,3 +113,8 @@ volumes:
       o: bind
       type: none
       device: "/home/${LOGIN}/data/mariadb"
+  redis:
+    driver_opts:
+      o: bind
+      type: none
+      device: "/home/${LOGIN}/data/redis"

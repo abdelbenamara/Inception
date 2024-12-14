@@ -23,7 +23,9 @@ main() {
 			--dbhost="$WORDPRESS_DB_HOST" \
 			--dbname="$WORDPRESS_DB_NAME" \
 			--dbuser="$WORDPRESS_DB_USER" \
-			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null; then
+			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null \
+			&& wp config set WP_REDIS_HOST "redis" \
+			&& wp config set WP_REDIS_PORT "6379"; then
 			echo "wp-config.php file created successfully"
 		else
 			echo "Failed to create wp-config.php file" >&2

@@ -24,9 +24,8 @@ main() {
 			--dbname="$WORDPRESS_DB_NAME" \
 			--dbuser="$WORDPRESS_DB_USER" \
 			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null \
-			&& wp config set WP_REDIS_HOST "redis" \
-			&& wp config set WP_REDIS_PORT "6379" \
-			&& wp plugin install redis-cache --activate; then
+			&& wp config set WP_REDIS_HOST "redis" > /dev/null \
+			&& wp config set WP_REDIS_PORT "6379" > /dev/null; then
 			echo "wp-config.php file created successfully"
 		else
 			echo "Failed to create wp-config.php file" >&2
@@ -38,7 +37,8 @@ main() {
 			--admin_user=$WORDPRESS_ADMIN_USER \
 			--admin_email=$WORDPRESS_ADMIN_EMAIL \
 			--prompt=admin_password < $WORDPRESS_ADMIN_PASSWORD_FILE \
-			--skip-email > /dev/null; then
+			--skip-email > /dev/null \
+			&& wp plugin install redis-cache --activate > /dev/null; then
 			echo "WordPress installed successfully"
 		else
 			echo "Failed to install WordPress"

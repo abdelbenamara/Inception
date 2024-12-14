@@ -8,8 +8,9 @@ main() {
 	else
 		echo "wp-config.php file not found, creating...."
 
-		for var in DB_HOST DB_NAME DB_USER DB_PASSWORD_FILE URL TITLE \
-			ADMIN_USER ADMIN_EMAIL ADMIN_PASSWORD_FILE; do
+		for var in DB_HOST DB_NAME DB_USER DB_PASSWORD_FILE \
+			URL TITLE ADMIN_USER ADMIN_EMAIL ADMIN_PASSWORD_FILE \
+			USER_LOGIN USER_EMAIL USER_PASSWORD_FILE; do
 			eval wp_var="\$WORDPRESS_${var}"
 
 			if [ -z "$wp_var" ]; then
@@ -23,7 +24,7 @@ main() {
 			--dbname="$WORDPRESS_DB_NAME" \
 			--dbuser="$WORDPRESS_DB_USER" \
 			--prompt=dbpass < $WORDPRESS_DB_PASSWORD_FILE > /dev/null; then
-			echo "wp-config.php file created"
+			echo "wp-config.php file created successfully"
 		else
 			echo "Failed to create wp-config.php file" >&2
 		fi
@@ -38,6 +39,15 @@ main() {
 			echo "WordPress installed successfully"
 		else
 			echo "Failed to install WordPress"
+		fi
+
+		if wp user create \
+			$WORDPRESS_USER_LOGIN \
+			$WORDPRESS_USER_EMAIL \
+			--prompt=user_pass < $WORDPRESS_USER_PASSWORD_FILE > /dev/null; then
+			echo "WordPress user created successfully"
+		else
+			echo "Failed to create WordPress user"
 		fi
 
 		sed -e 's/^\s*\(user =\).*/\1 www-data/' \

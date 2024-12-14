@@ -25,7 +25,6 @@ services:
       retries: 3
 
   wordpress:
-    # image: wordpress:6.6-php8.3-fpm-alpine
     build: requirements/wordpress
     depends_on:
       mariadb:

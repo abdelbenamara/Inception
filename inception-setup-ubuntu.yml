@@ -257,15 +257,21 @@
         - "wp_user_password.txt"
       become: false
 
+    - name: Create wordpress volume directory
+      ansible.builtin.file:
+        path: "{{ ansible_user_dir }}/data/wordpress"
+        state: directory
+      become: false
+
     - name: Create mariadb volume directory
       ansible.builtin.file:
         path: "{{ ansible_user_dir }}/data/mariadb"
         state: directory
       become: false
 
-    - name: Create wordpress volume directory
+    - name: Create redis volume directory
       ansible.builtin.file:
-        path: "{{ ansible_user_dir }}/data/wordpress"
+        path: "{{ ansible_user_dir }}/data/redis"
         state: directory
       become: false
 

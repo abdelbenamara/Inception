@@ -2,117 +2,105 @@
 
 set -eo pipefail
 
-_log() {
-	echo "$(date -I) [Note] [Entrypoint]: $*"
+_note() {
+	echo "$(date -Iseconds) [Note] [Entrypoint]:" "$@"
 }
 
 _process_sql() {
-	mariadb --no-defaults --skip-ssl --skip-ssl-verify-server-cert \
-		--database=mysql "$@"
+	mariadb --batch --binary-mode --skip-column-names \
+		--database=mysql --skip-ssl "$@"
 }
 
-docker_temp_server_start() {
-	_log "Waiting for server startup"
-	mariadbd --user=mysql --skip-name-resolve \
-		--skip-networking=0 --silent-startup &
+_temp_server_start() {
+	_note "Waiting for temporary server startup"
+	mariadbd --silent-startup --skip-networking --skip-slave-start --skip-ssl &
+	
 	MARIADB_TEMP_SERVER_PID="$!"
-
+	
 	local i
-	for i in {10..0}; do
-		if healthcheck.sh --connect --innodb_initialized > /dev/null 2>&1; then
+	
+	for i in {30..0}; do
+		if healthcheck.sh --no-connect --innodb_initialized; then
 			break
 		fi
-		sleep 3
+		
+		sleep 1
 	done
 
 	if [ "$i" = 0 ]; then
-		_log "Unable to start server" | sed -e 's/ \[Info\] / \[ERROR\] /' >&2
+		_note "Unable to start temporary server" \
+			| sed -e 's/ \[Info\] / \[ERROR\] /' >&2
 		exit 1
 	fi
 }
 
-docker_setup_database() {
-	_log "Running mariadb-tzinfo-to-sql"
-	mariadb-tzinfo-to-sql /usr/share/zoneinfo | _process_sql > /dev/null
+_init_database() {
+	_note "Running mariadb-tzinfo-to-sql"
+	mariadb-tzinfo-to-sql /usr/share/zoneinfo | _process_sql
+	_note "Setting 'root'@'localhost' password"
+	_note "Revoking all privileges and grant option from 'mysql'@'localhost'"
+	_note "Granting usage privilege to 'mysql'@'localhost'"
+	_note "Identifying 'mysql'@'localhost' only via unix socket"
 	
-	_log "Running mariadb-secure-installation"
-	sed -e '/^\s*#\+.*/d' <<-EOF | mariadb-secure-installation > /dev/null
-		# Enter current password for root (enter for none):
-
-		# Switch to unix_socket authentication [Y/n]
-		n
-		# Change the root password? [Y/n]
-		Y
-		# New password:
-		$MYSQL_ROOT_PASSWORD
-		# Re-enter new password:
-		$MYSQL_ROOT_PASSWORD
-		# Remove anonymous users? [Y/n]
-		Y
-		# Disallow root login remotely? [Y/n]
-		Y
-		# Remove test database and access to it? [Y/n]
-		Y
-		# Reload privilege tables now? [Y/n]
-		Y
-	EOF
-
 	local create_database create_user
-	if [ "$MYSQL_DATABASE" != "" ]; then
-		_log "Creating database $MYSQL_DATABASE"
-		create_database="CREATE DATABASE IF NOT EXISTS \`$MYSQL_DATABASE\`;"
 
+	if [ "$MYSQL_DATABASE" != "" ]; then
+		_note "Creating database '$MYSQL_DATABASE'"
+		
+		create_database="CREATE DATABASE IF NOT EXISTS \`$MYSQL_DATABASE\`;"
+		
 		if [ "$MYSQL_USER" != "" ]; then
-			_log "Creating user $MYSQL_USER"
+			_note "Creating user '$MYSQL_USER'@'%'"
+			_note "Giving user '$MYSQL_USER' access to schema '$MYSQL_DATABASE'"
+			
 			create_user="GRANT ALL PRIVILEGES ON \`$MYSQL_DATABASE\`.* \
 				to '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD';"
 		fi
 	fi
 
-	_process_sql --binary-mode <<-EOSQL
+	_process_sql <<-EOSQL
 		FLUSH PRIVILEGES;
+		SET PASSWORD for 'root'@'localhost' = PASSWORD('$MYSQL_ROOT_PASSWORD');
+		REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'mysql'@'localhost';
+		GRANT USAGE ON *.* TO 'mysql'@'localhost' IDENTIFIED VIA unix_socket;
 		$create_database
 		$create_user
 		FLUSH PRIVILEGES;
 	EOSQL
 }
 
+MARIADB_TEMP_SERVER_PID=
+
 main() {
-	for var in ROOT_PASSWORD DATABASE USER PASSWORD; do
-		eval mysql_var="\$MYSQL_${var}"
-    	eval mysql_file_var="\$MYSQL_${var}_FILE"
+	if [ ! -d "/var/lib/mysql/mysql" ]; then
+		for var in ROOT_PASSWORD DATABASE USER PASSWORD; do
+			eval mysql_var="\$MYSQL_${var}"
+			eval mysql_file_var="\$MYSQL_${var}_FILE"
+			
+			if [ -z "$mysql_var" ] && [ -n "$mysql_file_var" ]; then
+				eval "export MYSQL_${var}=$(cat "$mysql_file_var")"
+			fi
+		done
 		
-		if [ -z "$mysql_var" ] && [ -n "$mysql_file_var" ]; then
-			eval "export MYSQL_${var}=$(cat "$mysql_file_var")"
-		fi
-	done
-
-	if [ -d "/run/mysqld" ]; then
-		_log "mysqld directory already present, skipping creation"
-	else
-		_log "mysqld directory not found, creating...."
-		mkdir -p /run/mysqld && chown -R mysql:mysql /run/mysqld
-	fi
-
-	if [ -d /var/lib/mysql/mysql ]; then
-		_log "MySQL directory already present, skipping creation"
-	else
-		_log "Running mariadb-install-db"
-		mariadb-install-db --user=mysql --datadir=/var/lib/mysql
-		_log "Database files initialized"
-
-		_log "Starting temporary server for init purposes"
-		docker_temp_server_start
-		_log "Temporary server started"
-
-		docker_setup_database
-
-		_log "Stopping temporary server"
+		_note "Running mariadb-install-db"
+		mariadb-install-db --auth-root-authentication-method=socket \
+			--auth-root-socket-user=mysql --datadir=/var/lib/mysql \
+			--skip-name-resolve --skip-test-db
+		_note "Database files initialized"	
+		_note "Starting temporary server for init purposes"
+		_temp_server_start
+		_note "Temporary server started"
+		_init_database
+		_note "Stopping temporary server"
 		kill "$MARIADB_TEMP_SERVER_PID"
 		wait "$MARIADB_TEMP_SERVER_PID"
-		_log "Temporary server stopped"
-	fi
-
+		_note "Temporary server stopped"
+		
+		for var in ROOT_PASSWORD DATABASE USER PASSWORD; do
+			eval "unset MYSQL_${var}"
+		done
+	fi	
+	
 	exec "$@"
 }
 

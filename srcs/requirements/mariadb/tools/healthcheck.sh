@@ -2,52 +2,62 @@
 
 set -eo pipefail
 
-_fail() {
-	echo "$(date -I) [ERROR] [Healthcheck]: $*" >&2
+_error() {
+	echo "$(date -Iseconds) [ERROR] [Healthcheck]:" "$@" >&2
+	exit 1
 }
 
 _process_sql() {
-	mariadb --no-defaults --skip-ssl --skip-ssl-verify-server-cert \
-		--batch --skip-column-names "$@"
+	mariadb --batch --skip-column-names --skip-ssl "$@"
 }
 
-connect() {
-	conn_status=$(_process_sql -e 'select @@skip_networking')
-	return $conn_status
+CONNECTION_STATUS=
+
+_connect() {
+	CONNECTION_STATUS=$(_process_sql -e 'select @@skip_networking')
+	
+	return $CONNECTION_STATUS
 }
 
-innodb_initialized()
+_innodb_initialized()
 {
-	[ $(_process_sql -e "select 1 from information_schema.ENGINES \
-WHERE engine='innodb' AND support in ('YES', 'DEFAULT', 'ENABLED')") = 1 ]
+	[ $(_process_sql -e "select 1 from information_schema.ENGINES WHERE \
+		engine='innodb' AND support in ('YES', 'DEFAULT', 'ENABLED')") = 1 ]
 }
 
-if [ $# -eq 0 ]; then
-	_fail "At least one argument required"
-	exit 1
-fi
+main() {
+	if [ $# -eq 0 ]; then
+		_error "At least one argument required"
+	fi
 
-conn_status=
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			--no-connect)
+				CONNECTION_STATUS=0
+				;;
+			--connect|--innodb_initialized)
+				eval "_${1#--} > /dev/null 2>&1"
+				
+				if [ "$?" -ne 0 ]; then
+					_error "Test '$1' failed"
+				fi
+				
+				;;
+			*)
+				_error "Unknown option or test '$1'"
+				;;
+		esac
 
-while [ "$#" -gt 0 ]; do
-	case "$1" in
-		--connect|--innodb_initialized)
-			eval ${1#--} > /dev/null 2>&1
-			if [ "$?" -ne 0 ]; then
-				_fail "healthcheck $1 failed"
-				exit 1
-			fi
-			;;
-		*)
-			_fail "Unknown healthcheck option $1"
-			exit 1
-	esac
-	shift
-done
+		shift
+	done
 
-if [ "$conn_status" != "0" ]; then
-	# we didn't pass a connnect test, so the current status is suspicious
-	# return what connect thinks.
-	connect > /dev/null 2>&1
-	exit $?
-fi
+	if [ "$CONNECTION_STATUS" != "0" ]; then
+		connect > /dev/null 2>&1
+	fi	
+	
+	return $CONNECTION_STATUS
+}
+
+main "$@"
+
+exit $?

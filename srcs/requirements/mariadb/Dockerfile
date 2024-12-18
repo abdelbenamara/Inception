@@ -1,17 +1,23 @@
 FROM alpine:3.20
 
-RUN set -x \
-	&& addgroup -S mysql \
-	&& adduser -S mysql -G mysql -h /var/lib/mysql \
-	&& apk add --no-cache tzdata mariadb mariadb-client
+RUN set -ex \
+	&& addgroup --system mysql \
+	&& adduser --home /var/lib/mysql --ingroup mysql --system mysql \
+	&& apk add --no-cache tzdata mariadb mariadb-client \
+	&& mkdir -p /run/mysqld \	
+	&& chown -R mysql:mysql /run/mysqld \
+	&& chmod 1777 /run/mysqld
+
+USER mysql
 
 VOLUME ["/var/lib/mysql"]
 
 COPY --chown=root --chmod=755 tools /usr/local/bin/
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 EXPOSE 3306
 
 STOPSIGNAL SIGQUIT
 
-CMD ["mariadbd", "--user=mysql", "--skip-networking=0"]
+CMD ["mariadbd", "--skip-networking=0"]

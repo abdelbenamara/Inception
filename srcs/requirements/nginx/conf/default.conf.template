@@ -1,23 +1,31 @@
-# server {
-#   listen                          80;
-#   listen                     [::]:80;
-#   server_name                     www.${DOMAIN_NAME} ${DOMAIN_NAME};
-
-#   location / {
-#     return                        301 https://$host$request_uri;
-#   }
-# }
+# Config inspired by https://developer.wordpress.org/advanced-administration
 
 server {
   listen                          443 ssl;
   listen                     [::]:443 ssl;
-  server_name                     www.${DOMAIN_NAME} ${DOMAIN_NAME};
+  http2                           on;
+
+  ssl_protocols                   TLSv1.2 TLSv1.3;
   ssl_certificate                 ${SSL_CERTIFICATE};
   ssl_certificate_key             ${SSL_KEY};
-  ssl_protocols                   TLSv1.2 TLSv1.3;
-  
+
+  server_name                     www.${DOMAIN_NAME} ${DOMAIN_NAME} $host;
+
+  add_header                      Strict-Transport-Security "max-age=31536000";
+
   root                            /var/www/html;
   index                           index.php;
+
+  location = /favicon.ico {
+    log_not_found                 off;
+    access_log                    off;
+  }
+
+  location = /robots.txt {
+    allow                         all;
+    log_not_found                 off;
+    access_log                    off;
+  }
 
   location / {
     try_files                     $uri $uri/ /index.php$is_args$args;
@@ -32,4 +40,24 @@ server {
     
     include                       fastcgi.conf;
   }
+
+  location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
+    expires                       max;
+    log_not_found                 off;
+  }
+
+  location ~ /\. {
+      deny                        all;
+  }
+
+  location ~* /(?:uploads|files)/.*\.php$ {
+      deny                        all;
+  }
+}
+
+server {
+  listen                          80 default_server;
+  listen                     [::]:80 default_server;
+
+  return                          301 https://$host$request_uri;
 }

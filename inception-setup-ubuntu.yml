@@ -19,7 +19,7 @@
           - user_dir
           - user_id
       become: false
-    
+
     - name: "Ensure that OS family is Debian and \
             that architecture and distribution are defined"
       ansible.builtin.assert:
@@ -155,11 +155,12 @@
         single_branch: yes
         update: false
       become: false
-    
+
     - name: Create Inception/srcs/.env from Inception/srcs/template.env
       ansible.builtin.copy:
         src: "{{ ansible_user_dir }}/Inception/srcs/template.env"
         dest: "{{ ansible_user_dir }}/Inception/srcs/.env"
+      become: false
 
     - name: Edit Inception/srcs/.env
       ansible.builtin.lineinfile:
@@ -170,28 +171,28 @@
     - name: Set common name (CN)
       ansible.builtin.set_fact:
         common_name: "www.{{ ansible_user_id }}.42.fr"
-    
-    - name: Create mariadb volume directory
+
+    - name: Create requirements tools directory
       ansible.builtin.file:
         path: "{{ ansible_user_dir }}/Inception/srcs/requirements/tools"
         state: directory
       become: false
-    
-    - name: Set ssl certificate common path
+
+    - name: Set ssl certificates paths
       ansible.builtin.set_fact:
-        common_path: "{{ ansible_user_dir }}/\
+        ssl_common_path: "{{ ansible_user_dir }}/\
           Inception/srcs/requirements/tools/{{ common_name }}"
 
     - name: Generate an OpenSSL private key
       community.crypto.openssl_privatekey:
-        path: "{{ common_path }}.key"
+        path: "{{ ssl_common_path }}.key"
         size: 4096
         type: 'RSA'
       become: false
 
     - name: Create certificate signing request (CSR) for CA certificate
       community.crypto.openssl_csr_pipe:
-        privatekey_path: "{{ common_path }}.key"
+        privatekey_path: "{{ ssl_common_path }}.key"
         country_name: 'FR'
         state_or_province_name: 'Ile-de-France'
         locality_name: 'Paris'
@@ -203,15 +204,15 @@
 
     - name: Create self-signed CA certificate from CSR
       community.crypto.x509_certificate:
-        path: "{{ common_path }}.ca"
+        path: "{{ ssl_common_path }}.ca.crt"
         csr_content: "{{ ca_csr.csr }}"
-        privatekey_path: "{{ common_path }}.key"
+        privatekey_path: "{{ ssl_common_path }}.key"
         provider: selfsigned
-      become: false
-      
+      become: false 
+
     - name: Create certificate signing request (CSR) for new certificate
       community.crypto.openssl_csr_pipe:
-        privatekey_path: "{{ common_path }}.key"
+        privatekey_path: "{{ ssl_common_path }}.key"
         common_name: "{{ common_name }}"
         organization_name: '42'
         organizational_unit_name: 'Inception'
@@ -224,31 +225,24 @@
 
     - name: Generate an OpenSSL certificate signed with your own CA certificate
       community.crypto.x509_certificate:
-        path: "{{ common_path }}.crt"
+        path: "{{ ssl_common_path }}.crt"
         csr_content: "{{ crt_csr.csr }}"
-        ownca_path: "{{ common_path }}.ca"
-        ownca_privatekey_path: "{{ common_path }}.key"
+        ownca_path: "{{ ssl_common_path }}.ca.crt"
+        ownca_privatekey_path: "{{ ssl_common_path }}.key"
         provider: ownca
       become: false
 
-    - name: Edit /etc/hosts
-      ansible.builtin.lineinfile:
-        path: /etc/hosts
-        regexp: '^127\.0\.0\.1'
-        line: "127.0.0.1\tlocalhost {{ common_name }} \
-          {{ ansible_user_id }}.42.fr"
-    
     - name: Create secrets directory
       ansible.builtin.file:
         path: "{{ ansible_user_dir }}/Inception/secrets"
         state: directory
       become: false
-    
+
     - name: Edit secrets
       ansible.builtin.lineinfile:
         path: "{{ ansible_user_dir }}/Inception/secrets/{{ item }}"
         regexp: "^.*"
-        line: "{{ lookup('ansible.builtin.password', '/dev/null') }}"
+        line: "{{ lookup('ansible.builtin.password', '/dev/null', length=64) }}"
         create: true
       loop:
         - "db_password.txt"
@@ -257,27 +251,26 @@
         - "wp_user_password.txt"
       become: false
 
-    - name: Create wordpress volume directory
+    - name: Create volumes directories
       ansible.builtin.file:
-        path: "{{ ansible_user_dir }}/data/wordpress"
+        path: "{{ ansible_user_dir }}/data/{{ item }}"
         state: directory
-      become: false
-
-    - name: Create mariadb volume directory
-      ansible.builtin.file:
-        path: "{{ ansible_user_dir }}/data/mariadb"
-        state: directory
-      become: false
-
-    - name: Create redis volume directory
-      ansible.builtin.file:
-        path: "{{ ansible_user_dir }}/data/redis"
-        state: directory
+      loop:
+        - "wordpress"
+        - "mariadb"
+        - "redis"
       become: false
 
     - name: Make Inception
       community.general.make:
         chdir: "{{ ansible_user_dir }}/Inception"
+
+    - name: Edit /etc/hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.0\.1'
+        line: "127.0.0.1\tlocalhost {{ common_name }} \
+          {{ ansible_user_id }}.42.fr"
 
     - name: Remove dependencies that are no longer required
       ansible.builtin.apt:

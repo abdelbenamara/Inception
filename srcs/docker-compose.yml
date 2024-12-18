@@ -17,7 +17,7 @@ services:
        - db_root_password
        - db_password
     networks:
-      - inception-network
+      - mariadb
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       start_period: 10s
@@ -33,7 +33,7 @@ services:
     volumes:
       - redis:/data
     networks:
-      - inception-network
+      - redis
 
   wordpress:
     build: requirements/wordpress
@@ -65,7 +65,9 @@ services:
        - wp_admin_password
        - wp_user_password
     networks:
-      - inception-network
+      - wordpress
+      - mariadb
+      - redis
 
   nginx:
     build: requirements/nginx
@@ -89,11 +91,14 @@ services:
     ports:
       - "443:443"
     networks:
-      - inception-network
+      - wordpress
 
 networks:
-  inception-network:
-    name: inception-network
+  wordpress:
+    driver: bridge
+  mariadb:
+    driver: bridge
+  redis:
     driver: bridge
 
 secrets:
@@ -108,16 +113,19 @@ secrets:
 
 volumes:
   wordpress:
+    driver: local
     driver_opts:
       o: bind
       type: none
       device: "/home/${LOGIN}/data/wordpress"
   mariadb:
+    driver: local
     driver_opts:
       o: bind
       type: none
       device: "/home/${LOGIN}/data/mariadb"
   redis:
+    driver: local
     driver_opts:
       o: bind
       type: none

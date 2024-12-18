@@ -6,27 +6,22 @@ DATA := /home/$(LOGIN)/data
 
 RM := rm -f
 
-all: build up
-
-build:
-	docker compose -f $(NAME) build
-
-up:
-	docker compose -f $(NAME) up -d
+all:
+	docker compose -f $(NAME) up --build --detach
 
 down:
 	docker compose -f $(NAME) down
 
+logs:
+	docker compose -f $(NAME) logs --follow
+
 clean: down
-	$(RM) -r $(DATA)/wordpress/*
-	$(RM) -r $(DATA)/mariadb/*
-	$(RM) -r $(DATA)/redis/*
+	docker compose -f $(NAME) down --volumes
 
 fclean: clean
-	docker volume rm inception_wordpress
-	docker volume rm inception_mariadb
-	docker volume rm inception_redis
+	$(RM) -r /home/$(LOGIN)/data/**/*
+	docker compose -f $(NAME) down --rmi local
 
 re: fclean all
 
-.PHONY: re down fclean clean up build all
+.PHONY: re fclean clean logs down all

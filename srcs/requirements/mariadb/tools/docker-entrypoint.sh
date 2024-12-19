@@ -73,12 +73,14 @@ MARIADB_TEMP_SERVER_PID=
 
 main() {
 	if [ ! -d "/var/lib/mysql/mysql" ]; then
+		local var
+		
 		for var in ROOT_PASSWORD DATABASE USER PASSWORD; do
-			eval mysql_var="\$MYSQL_${var}"
-			eval mysql_file_var="\$MYSQL_${var}_FILE"
+			eval mysql_var="\$MYSQL_"$var
+			eval mysql_file_var="\$MYSQL_"$var"_FILE"
 			
 			if [ -z "$mysql_var" ] && [ -n "$mysql_file_var" ]; then
-				eval "export MYSQL_${var}=$(cat "$mysql_file_var")"
+				eval "export MYSQL_"$var"=$(cat "$mysql_file_var")"
 			fi
 		done
 		
@@ -97,7 +99,7 @@ main() {
 		_note "Temporary server stopped"
 		
 		for var in ROOT_PASSWORD DATABASE USER PASSWORD; do
-			eval "unset MYSQL_${var}"
+			eval "unset MYSQL_"$var
 		done
 	fi	
 	

@@ -38,7 +38,7 @@ main() {
 			--connect|--innodb_initialized)
 				eval "_${1#--} > /dev/null 2>&1"
 				
-				if [ "$?" -ne 0 ]; then
+				if [ $? -ne 0 ]; then
 					_error "Test '$1' failed"
 				fi
 				

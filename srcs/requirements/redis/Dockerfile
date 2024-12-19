@@ -1,16 +1,25 @@
 FROM alpine:3.20
 
 RUN set -x \
-	&& addgroup -S -g 1000 redis \
-	&& adduser -S -G redis -u 999 redis \
-	&& apk add --no-cache redis \
-	&& mkdir /data && chown redis:redis /data
+	&& addgroup --gid 1000 --system redis \
+	&& adduser --ingroup redis --system \
+		--uid 999 redis \
+	&& apk add --no-cache tzdata redis \
+	&& mkdir /data \
+	&& chown -R redis:redis /data
+
+USER redis
 
 WORKDIR /data
+
 VOLUME ["/data"]
+
+COPY --chown=root --chmod=755 tools /usr/local/bin/
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 EXPOSE 6379
 
 STOPSIGNAL SIGQUIT
 
-CMD ["redis-server", "--protected-mode", "no"]
+CMD ["redis-server"]

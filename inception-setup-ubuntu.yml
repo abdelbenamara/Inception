@@ -247,8 +247,10 @@
       loop:
         - "db_password.txt"
         - "db_root_password.txt"
-        - "wp_admin_password.txt"
-        - "wp_user_password.txt"
+        - "redis_default_password.txt"
+        - "redis_password.txt"
+        - "wordpress_admin_password.txt"
+        - "wordpress_user_password.txt"
       become: false
 
     - name: Create volumes directories
@@ -256,9 +258,9 @@
         path: "{{ ansible_user_dir }}/data/{{ item }}"
         state: directory
       loop:
-        - "wordpress"
         - "mariadb"
         - "redis"
+        - "wordpress"
       become: false
 
     - name: Make Inception

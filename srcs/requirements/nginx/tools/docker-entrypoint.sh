@@ -33,7 +33,9 @@ auto_envsubst() {
 }
 
 main() {
-	auto_envsubst
+	if [ "$1" = "nginx" ]; then
+		auto_envsubst
+	fi
 
 	exec "$@"
 }

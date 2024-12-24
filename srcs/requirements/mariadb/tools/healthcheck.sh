@@ -11,8 +11,6 @@ _process_sql() {
 	mariadb --batch --skip-column-names --skip-ssl "$@"
 }
 
-CONNECTION_STATUS=
-
 _connect() {
 	CONNECTION_STATUS=$(_process_sql -e 'select @@skip_networking')
 	
@@ -29,6 +27,8 @@ main() {
 	if [ $# -eq 0 ]; then
 		_error "At least one argument required"
 	fi
+
+	CONNECTION_STATUS=1
 
 	while [ $# -gt 0 ]; do
 		case "$1" in

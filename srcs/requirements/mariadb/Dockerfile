@@ -3,7 +3,8 @@ FROM alpine:3.20
 RUN set -ex \
 	&& addgroup --system mysql \
 	&& adduser --home /var/lib/mysql --ingroup mysql --system mysql \
-	&& apk add --no-cache tzdata mariadb mariadb-client \
+	&& apk add --no-cache tzdata zstd \
+		mariadb mariadb-client mariadb-server-utils \
 	&& mkdir -p /run/mysqld \	
 	&& chown -R mysql:mysql /run/mysqld \
 	&& chmod 1777 /run/mysqld

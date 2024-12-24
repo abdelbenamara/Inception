@@ -3,7 +3,7 @@
 set -eo pipefail
 
 main() {
-    if ! redis-cli ping > /dev/null 2>&1; then
+    if [ "$1" = "redis-server" ] && ! redis-cli ping > /dev/null 2>&1; then
         for var in DEFAULT_PASSWORD_FILE \
             USER PASSWORD_FILE; do
             eval redis_var="\$REDIS_"$var

@@ -170,7 +170,7 @@
 
     - name: Set common name (CN)
       ansible.builtin.set_fact:
-        common_name: "www.{{ ansible_user_id }}.42.fr"
+        common_name: "{{ ansible_user_id }}.42.fr"
 
     - name: Create requirements tools directory
       ansible.builtin.file:
@@ -219,8 +219,7 @@
         subject_alt_name:
           - 'DNS:127.0.0.1'
           - 'DNS:localhost'
-          - "DNS:{{ common_name }}"
-          - "DNS:{{ ansible_user_id }}.42.fr"
+          - "DNS:*.{{ common_name }}"
       register: crt_csr
 
     - name: Generate an OpenSSL certificate signed with your own CA certificate
@@ -261,18 +260,15 @@
         - "mariadb"
         - "redis"
         - "wordpress"
+        - "adminer"
       become: false
 
     - name: Make Inception
       community.general.make:
         chdir: "{{ ansible_user_dir }}/Inception"
-
-    - name: Edit /etc/hosts
-      ansible.builtin.lineinfile:
-        path: /etc/hosts
-        regexp: '^127\.0\.0\.1'
-        line: "127.0.0.1\tlocalhost {{ common_name }} \
-          {{ ansible_user_id }}.42.fr"
+        targets:
+          - all
+          - hosts
 
     - name: Remove dependencies that are no longer required
       ansible.builtin.apt:

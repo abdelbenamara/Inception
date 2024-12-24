@@ -26,7 +26,7 @@ services:
       retries: 3
 
   redis:
-    build: requirements/redis
+    build: requirements/bonus/redis
     image: redis
     container_name: redis
     restart: always
@@ -78,6 +78,25 @@ services:
       - wordpress
       - mariadb
       - redis
+  
+  adminer:
+    build: 
+      context: requirements/bonus/adminer
+      args:
+        ADMINER_REPOSITORY: ${ADMINER_REPOSITORY}
+        ADMINER_VERSION: ${ADMINER_VERSION}
+    image: adminer
+    container_name: adminer
+    restart: always
+    volumes:
+      - "/home/${LOGIN}/Inception/srcs/requirements/bonus/adminer/conf/\
+          index.php:/etc/adminer/index.php"
+      - adminer:/var/www/admin
+    environment:
+      ADMINER_DESIGN: ${ADMINER_DESIGN}
+    networks:
+      - adminer
+      - mariadb
 
   nginx:
     build: requirements/nginx
@@ -94,16 +113,21 @@ services:
       - "/home/${LOGIN}/Inception/srcs/requirements/nginx/conf/\
           default.conf.template:/etc/nginx/templates/default.conf.template"
       - wordpress:/var/www/html
+      - adminer:/var/www/admin
     environment:
       DOMAIN_NAME: ${DOMAIN_NAME}
       SSL_CERTIFICATE: ${SSL_CERTIFICATE}
       SSL_KEY: ${SSL_KEY}
+      ADMINER_DOMAIN_NAME: ${ADMINER_DOMAIN_NAME}
     ports:
       - "443:443"
     networks:
       wordpress:
         aliases:
           - ${DOMAIN_NAME}
+      adminer:
+        aliases:
+          - ${ADMINER_DOMAIN_NAME}
 
 networks:  
   mariadb:
@@ -113,6 +137,9 @@ networks:
     driver: bridge
 
   wordpress:
+    driver: bridge
+  
+  adminer:
     driver: bridge
 
 secrets:
@@ -155,3 +182,10 @@ volumes:
       o: bind
       type: none
       device: "/home/${LOGIN}/data/wordpress"
+  
+  adminer:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/home/${LOGIN}/data/adminer"

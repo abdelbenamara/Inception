@@ -6,7 +6,7 @@ ARG ADMINER_VERSION=4.8.1
 ENV ADMINER_REPOSITORY=$ADMINER_REPOSITORY
 ENV ADMINER_VERSION=$ADMINER_VERSION
 
-RUN set -x \
+RUN set -eux \
 	&& addgroup --system adminer \
     && adduser --ingroup adminer --system adminer \
 	&& apk add --no-cache php83 php83-fpm php83-session php83-mysqli \

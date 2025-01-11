@@ -4,8 +4,8 @@ server {
   http2                           on;
 
   ssl_protocols                   TLSv1.2 TLSv1.3;
-  ssl_certificate                 ${SSL_CERTIFICATE};
-  ssl_certificate_key             ${SSL_KEY};
+  ssl_certificate                 /etc/nginx/${SSL_CERTIFICATE};
+  ssl_certificate_key             /etc/nginx/${SSL_KEY};
 
   server_name                     ${DOMAIN_NAME} www.${DOMAIN_NAME};
 
@@ -35,7 +35,6 @@ server {
     fastcgi_split_path_info       ^(.+\.php)(.*)$;
     fastcgi_pass                  wordpress:9000;
     fastcgi_index                 index.php;
-
     include                       fastcgi.conf;
   }
 
@@ -50,46 +49,5 @@ server {
 
   location ~* /(?:uploads|files)/.*\.php$ {
       deny                        all;
-  }
-}
-
-server {
-  listen                          80 default_server;
-  listen                     [::]:80 default_server;
-  http2                           on;
-
-  server_name                     ${DOMAIN_NAME} www.${DOMAIN_NAME};
-
-  return                          301 https://$host$request_uri;
-}
-
-server {
-  listen                          443 ssl;
-  listen                     [::]:443 ssl;
-  http2                           on;
-
-  ssl_protocols                   TLSv1.2 TLSv1.3;
-  ssl_certificate                 ${SSL_CERTIFICATE};
-  ssl_certificate_key             ${SSL_KEY};
-
-  server_name                     ${ADMINER_DOMAIN_NAME};
-
-  add_header                      Strict-Transport-Security "max-age=31536000";
-
-  root                            /var/www/admin;
-  index                           index.php;
-
-  location / {
-    try_files                     $uri $uri/ =404;
-  }
-
-  location ~ \.php$ {
-    try_files                     $uri =404;
-
-    fastcgi_split_path_info       ^(.+\.php)(.*)$;
-    fastcgi_pass                  adminer:9000;
-    fastcgi_index                 index.php;
-
-    include                       fastcgi.conf;
   }
 }

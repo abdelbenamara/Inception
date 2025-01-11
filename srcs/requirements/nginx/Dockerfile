@@ -1,10 +1,10 @@
 FROM alpine:3.20
 
-RUN set -x \
+RUN set -eux \
 	&& addgroup --gid 101 --system nginx \
 	&& adduser --home /var/cache/nginx --gecos nginx \
-		--shell /sbin/nologin --ingroup nginx --system \
-		--disabled-password --no-create-home \
+		--shell /sbin/nologin --ingroup nginx \
+		--system --disabled-password --no-create-home \
 		--uid 101 nginx \
 	&& apk add --no-cache gettext tzdata nginx \
 	&& ln -sf /dev/stdout /var/log/nginx/access.log \

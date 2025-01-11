@@ -1,0 +1,9 @@
+server {
+  listen                          80 default_server;
+  listen                     [::]:80 default_server;
+  http2                           on;
+
+  server_name                     ${DOMAIN_NAME} www.${DOMAIN_NAME};
+
+  return                          301 https://$host$request_uri;
+}

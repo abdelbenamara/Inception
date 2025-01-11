@@ -1,8 +1,9 @@
 FROM alpine:3.20
 
-RUN set -ex \
+RUN set -eux \
 	&& addgroup --system mysql \
-	&& adduser --home /var/lib/mysql --ingroup mysql --system mysql \
+	&& adduser --home /var/lib/mysql \
+		--ingroup mysql --system mysql \
 	&& apk add --no-cache tzdata zstd \
 		mariadb mariadb-client mariadb-server-utils \
 	&& mkdir -p /run/mysqld \	

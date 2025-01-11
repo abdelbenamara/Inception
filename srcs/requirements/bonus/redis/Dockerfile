@@ -1,9 +1,9 @@
 FROM alpine:3.20
 
-RUN set -x \
+RUN set -eux \	
 	&& addgroup --gid 1000 --system redis \
-	&& adduser --ingroup redis --system \
-		--uid 999 redis \
+	&& adduser --ingroup redis \
+		--system --uid 999 redis \
 	&& apk add --no-cache tzdata redis \
 	&& mkdir /data \
 	&& chown -R redis:redis /data

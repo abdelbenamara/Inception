@@ -1,0 +1,234 @@
+name: inception
+
+services:
+  mariadb:
+    build: requirements/mariadb
+    image: mariadb
+    container_name: mariadb
+    restart: always
+    volumes:
+      - mariadb:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+       - db_root_password
+       - db_password
+    networks:
+      - mariadb
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    build: requirements/bonus/redis
+    image: redis
+    container_name: redis
+    restart: always
+    volumes:
+      - redis:/data
+    environment:
+      REDIS_DEFAULT_PASSWORD_FILE: /run/secrets/redis_default_password
+      REDIS_USER: ${REDIS_USER}
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+    secrets:
+       - redis_default_password
+       - redis_password
+    networks:
+      - redis
+
+  wordpress:
+    build: requirements/wordpress
+    image: wordpress
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    container_name: wordpress
+    restart: always
+    volumes:
+      - wordpress:/var/www/html
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD_FILE: /run/secrets/db_password
+      WORDPRESS_REDIS_USER: ${REDIS_USER}
+      WORDPRESS_REDIS_PASSWORD_FILE: /run/secrets/redis_password
+      WORDPRESS_URL: ${DOMAIN_NAME}
+      WORDPRESS_TITLE: ${WORDPRESS_TITLE}
+      WORDPRESS_ADMIN_USER: ${WORDPRESS_ADMIN_USER}
+      WORDPRESS_ADMIN_EMAIL: ${WORDPRESS_ADMIN_EMAIL}
+      WORDPRESS_ADMIN_PASSWORD_FILE: /run/secrets/wordpress_admin_password
+      WORDPRESS_USER_LOGIN: ${WORDPRESS_USER_LOGIN}
+      WORDPRESS_USER_EMAIL: ${WORDPRESS_USER_EMAIL}
+      WORDPRESS_USER_PASSWORD_FILE: /run/secrets/wordpress_user_password
+    secrets:
+       - db_password
+       - redis_password
+       - wordpress_admin_password
+       - wordpress_user_password
+    networks:
+      - wordpress
+      - mariadb
+      - redis
+
+  adminer:
+    build: 
+      context: requirements/bonus/adminer
+      args:
+        ADMINER_REPOSITORY: ${ADMINER_REPOSITORY}
+        ADMINER_VERSION: ${ADMINER_VERSION}
+    image: adminer
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    container_name: adminer
+    restart: always
+    volumes:
+      - "/home/${LOGIN}/Inception/srcs/requirements/bonus/adminer/conf/\
+          index.php:/etc/adminer/index.php:ro"
+      - adminer:/var/www/admin
+    environment:
+      ADMINER_DESIGN: ${ADMINER_DESIGN}
+    networks:
+      - adminer
+      - mariadb
+
+  uptime-kuma:
+    build: requirements/bonus/uptime-kuma
+    image: uptime-kuma
+    depends_on:
+      - wordpress
+    container_name: uptime-kuma
+    restart: always
+    volumes:
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_CACERT}:\
+          /etc/uptime-kuma/ssl/${SSL_CACERT}:ro"
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_CERTIFICATE}:\
+          /etc/uptime-kuma/ssl/${SSL_CERTIFICATE}:ro"
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_KEY}:\
+          /etc/uptime-kuma/ssl/${SSL_KEY}:ro"
+      - uptime-kuma:/data
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/uptime-kuma/ssl/${SSL_CACERT}
+      UPTIME_KUMA_SSL_CERT: /etc/uptime-kuma/ssl/${SSL_CERTIFICATE}
+      UPTIME_KUMA_SSL_KEY: /etc/uptime-kuma/ssl/${SSL_KEY}
+    networks:
+      mariadb:
+      redis:
+      wordpress:
+        aliases:
+          - ${DOMAIN_NAME}
+      adminer:
+        aliases:
+          - ${ADMINER_DOMAIN_NAME}
+      uptime-kuma:
+        aliases:
+          - ${UPTIME_KUMA_DOMAIN_NAME}
+    healthcheck:
+      test: ["CMD", "/etc/uptime-kuma/extra/healthcheck"]
+      start_period: 180s
+      interval: 60s
+      timeout: 30s
+      retries: 5
+
+  nginx:
+    build: requirements/nginx
+    image: nginx
+    depends_on:
+      - wordpress
+    container_name: nginx
+    restart: always
+    volumes:
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_CERTIFICATE}:\
+          /etc/nginx/${SSL_CERTIFICATE}:ro"
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_KEY}:\
+          /etc/nginx/${SSL_KEY}:ro"
+      - "/home/${LOGIN}/Inception/srcs/requirements/nginx/conf/http.d:\
+        /etc/nginx/templates:ro"
+      - wordpress:/var/www/html:ro
+      - adminer:/var/www/admin:ro
+    environment:
+      NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/templates
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx/http.d 
+      DOMAIN_NAME: ${DOMAIN_NAME}
+      SSL_CERTIFICATE: ${SSL_CERTIFICATE}
+      SSL_KEY: ${SSL_KEY}
+      ADMINER_DOMAIN_NAME: ${ADMINER_DOMAIN_NAME}
+      UPTIME_KUMA_DOMAIN_NAME: ${UPTIME_KUMA_DOMAIN_NAME}
+    ports:
+      - "443:443"
+    networks:
+      wordpress:
+        aliases:
+          - ${DOMAIN_NAME}
+      adminer:
+        aliases:
+          - ${ADMINER_DOMAIN_NAME}
+      uptime-kuma:
+        aliases:
+          - ${UPTIME_KUMA_DOMAIN_NAME}
+
+networks:  
+  mariadb:
+  redis:
+  wordpress:
+  adminer:
+  uptime-kuma:
+
+secrets:
+  db_password:
+    file: ../secrets/db_password.txt
+  db_root_password:
+    file: ../secrets/db_root_password.txt
+  redis_default_password:
+    file: ../secrets/redis_default_password.txt
+  redis_password:
+    file: ../secrets/redis_password.txt
+  wordpress_admin_password:
+    file: ../secrets/wordpress_admin_password.txt
+  wordpress_user_password:
+    file: ../secrets/wordpress_user_password.txt
+
+volumes:
+  mariadb:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/home/${LOGIN}/data/mariadb"
+
+  redis:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/home/${LOGIN}/data/redis"
+
+  wordpress:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/home/${LOGIN}/data/wordpress"
+
+  adminer:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/home/${LOGIN}/data/adminer"
+
+  uptime-kuma:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: "/home/${LOGIN}/data/uptime-kuma"

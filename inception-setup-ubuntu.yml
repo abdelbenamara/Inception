@@ -183,16 +183,16 @@
         ssl_common_path: "{{ ansible_user_dir }}/\
           Inception/srcs/requirements/tools/{{ common_name }}"
 
-    - name: Generate an OpenSSL private key
+    - name: Generate an OpenSSL private key for CA
       community.crypto.openssl_privatekey:
-        path: "{{ ssl_common_path }}.key"
+        path: "{{ ssl_common_path }}.ca.key"
         size: 4096
         type: 'RSA'
       become: false
 
     - name: Create certificate signing request (CSR) for CA certificate
       community.crypto.openssl_csr_pipe:
-        privatekey_path: "{{ ssl_common_path }}.key"
+        privatekey_path: "{{ ssl_common_path }}.ca.key"
         country_name: 'FR'
         state_or_province_name: 'Ile-de-France'
         locality_name: 'Paris'
@@ -200,15 +200,28 @@
         organizational_unit_name: '42 School'
         common_name: "{{ common_name }}"
         use_common_name_for_san: false
+        basic_constraints:
+          - 'CA:TRUE'
+        basic_constraints_critical: true
+        key_usage:
+          - keyCertSign
+        key_usage_critical: true
       register: ca_csr
 
-    - name: Create self-signed CA certificate from CSR
+    - name: Create self-signed CA certificate from its CSR
       community.crypto.x509_certificate:
         path: "{{ ssl_common_path }}.ca.crt"
         csr_content: "{{ ca_csr.csr }}"
-        privatekey_path: "{{ ssl_common_path }}.key"
+        privatekey_path: "{{ ssl_common_path }}.ca.key"
         provider: selfsigned
-      become: false 
+      become: false
+    
+    - name: Generate an OpenSSL private key for certificate
+      community.crypto.openssl_privatekey:
+        path: "{{ ssl_common_path }}.key"
+        size: 4096
+        type: 'RSA'
+      become: false
 
     - name: Create certificate signing request (CSR) for new certificate
       community.crypto.openssl_csr_pipe:
@@ -219,15 +232,18 @@
         subject_alt_name:
           - 'DNS:127.0.0.1'
           - 'DNS:localhost'
+          - "DNS:{{ common_name }}"
           - "DNS:*.{{ common_name }}"
       register: crt_csr
 
-    - name: Generate an OpenSSL certificate signed with your own CA certificate
+    - name: Generate a certificate signed with owned CA certificate
       community.crypto.x509_certificate:
         path: "{{ ssl_common_path }}.crt"
         csr_content: "{{ crt_csr.csr }}"
+        ownca_not_after: "+365d"
+        ownca_not_before: "-1d"
         ownca_path: "{{ ssl_common_path }}.ca.crt"
-        ownca_privatekey_path: "{{ ssl_common_path }}.key"
+        ownca_privatekey_path: "{{ ssl_common_path }}.ca.key"
         provider: ownca
       become: false
 
@@ -239,17 +255,17 @@
 
     - name: Edit secrets
       ansible.builtin.lineinfile:
-        path: "{{ ansible_user_dir }}/Inception/secrets/{{ item }}"
+        path: "{{ ansible_user_dir }}/Inception/secrets/{{ item }}.txt"
         regexp: "^.*"
         line: "{{ lookup('ansible.builtin.password', '/dev/null', length=64) }}"
         create: true
       loop:
-        - "db_password.txt"
-        - "db_root_password.txt"
-        - "redis_default_password.txt"
-        - "redis_password.txt"
-        - "wordpress_admin_password.txt"
-        - "wordpress_user_password.txt"
+        - "db_password"
+        - "db_root_password"
+        - "redis_default_password"
+        - "redis_password"
+        - "wordpress_admin_password"
+        - "wordpress_user_password"
       become: false
 
     - name: Create volumes directories
@@ -261,6 +277,7 @@
         - "redis"
         - "wordpress"
         - "adminer"
+        - "uptime-kuma"
       become: false
 
     - name: Make Inception

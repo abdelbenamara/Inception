@@ -1,6 +1,6 @@
 FROM alpine:3.20
 
-RUN set -x \
+RUN set -eux \
 	&& adduser --ingroup www-data --disabled-password --system \
 		--uid 82 www-data \
 	&& apk add --no-cache bash ghostscript imagemagick \

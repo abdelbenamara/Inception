@@ -22,7 +22,7 @@ WORKDIR /var/www/html
 
 VOLUME ["/var/www/html"]
 
-COPY --chown=root --chmod=755 tools /usr/local/bin/
+COPY --chown=root --chmod=755 tools/ /usr/local/bin/
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 

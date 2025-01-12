@@ -11,7 +11,7 @@ server {
 
   add_header                      Strict-Transport-Security "max-age=31536000";
 
-  root                            /var/www/admin;
+  root                            /var/www/adminer;
   index                           index.php;
 
   location / {

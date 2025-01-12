@@ -7,13 +7,19 @@ server {
   ssl_certificate                 /etc/nginx/${SSL_CERTIFICATE};
   ssl_certificate_key             /etc/nginx/${SSL_KEY};
 
-  server_name                     ${UPTIME_KUMA_DOMAIN_NAME};
+  server_name                     ${DJANGO_DOMAIN_NAME};
 
   add_header                      Strict-Transport-Security "max-age=31536000";
 
   location / {
-    proxy_pass                    https://uptime-kuma:3001;
+    proxy_pass                    https://django:8000;
     proxy_set_header              Host $host;
     proxy_set_header              X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+
+  location /static/ {
+    autoindex                     on;
+    autoindex_exact_size          off;
+    alias                         /var/www/inception/staticfiles/;
   }
 }

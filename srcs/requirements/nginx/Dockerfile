@@ -10,7 +10,7 @@ RUN set -eux \
 	&& ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
 
-COPY --chown=root --chmod=755 tools /usr/local/bin/
+COPY --chown=root --chmod=755 tools/ /usr/local/bin/
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 

@@ -21,7 +21,7 @@ RUN set -eux \
 	&& rm -rf /app/uptime-kuma/docker /app/uptime-kuma/test \
 		/app/uptime-kuma/install.sh /app/uptime-kuma/.devcontainer \
 		/app/uptime-kuma/.git /app/uptime-kuma/.github \
-	&& ln -s -f /app/uptime-kuma/data /data \
+	&& ln -sf /app/uptime-kuma/data /data \
 	&& chown -R uptime-kuma:uptime-kuma /app/uptime-kuma
 
 USER uptime-kuma

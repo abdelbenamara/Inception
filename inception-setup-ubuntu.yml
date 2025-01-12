@@ -183,11 +183,12 @@
         ssl_common_path: "{{ ansible_user_dir }}/\
           Inception/srcs/requirements/tools/{{ common_name }}"
 
-    - name: Generate an OpenSSL private key for CA
+    - name: Generate an OpenSSL private keys for CA and certificate
       community.crypto.openssl_privatekey:
-        path: "{{ ssl_common_path }}.ca.key"
-        size: 4096
-        type: 'RSA'
+        path: "{{ ssl_common_path }}{{ item }}.key"
+      loop:
+        - ".ca"
+        - ""
       become: false
 
     - name: Create certificate signing request (CSR) for CA certificate
@@ -214,13 +215,6 @@
         csr_content: "{{ ca_csr.csr }}"
         privatekey_path: "{{ ssl_common_path }}.ca.key"
         provider: selfsigned
-      become: false
-    
-    - name: Generate an OpenSSL private key for certificate
-      community.crypto.openssl_privatekey:
-        path: "{{ ssl_common_path }}.key"
-        size: 4096
-        type: 'RSA'
       become: false
 
     - name: Create certificate signing request (CSR) for new certificate
@@ -266,6 +260,7 @@
         - "redis_password"
         - "wordpress_admin_password"
         - "wordpress_user_password"
+        - "django_secret_key"
       become: false
 
     - name: Create volumes directories
@@ -276,6 +271,7 @@
         - "mariadb"
         - "redis"
         - "wordpress"
+        - "django"
         - "adminer"
         - "uptime-kuma"
       become: false

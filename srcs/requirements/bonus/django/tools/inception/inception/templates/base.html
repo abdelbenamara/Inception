@@ -1,0 +1,27 @@
+{% load static i18n %}
+<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}Inception{% endblock title %}</title>
+  <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
+  {% block css %}
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  {% endblock css %}
+  {% block javascript %}
+  {% endblock javascript %}
+</head>
+
+<body class="{% block bodyclass %}{% endblock bodyclass %}">
+  {% block body %}
+  <div class="home">
+  </div>
+  {% endblock body %}
+  {% block modal %}
+  {% endblock modal %}
+  {% block inline_javascript %}
+  {% endblock inline_javascript %}
+</body>
+
+</html>

@@ -14,7 +14,7 @@ WORKDIR /data
 
 VOLUME ["/data"]
 
-COPY --chown=root --chmod=755 tools /usr/local/bin/
+COPY --chown=root --chmod=755 tools/ /usr/local/bin/
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 

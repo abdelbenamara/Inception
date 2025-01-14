@@ -78,7 +78,49 @@ services:
       - wordpress
       - mariadb
       - redis
-  
+
+  ftp:
+    build: requirements/bonus/ftp
+    image: ftp
+    depends_on:
+      - wordpress
+    container_name: ftp
+    restart: always
+    volumes:
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_CACERT}:\
+          /etc/vsftpd/ssl/${SSL_CACERT}:ro"
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_CERTIFICATE}:\
+          /etc/vsftpd/ssl/${SSL_CERTIFICATE}:ro"
+      - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_KEY}:\
+          /etc/vsftpd/ssl/${SSL_KEY}:ro"
+      - "/home/${LOGIN}/Inception/srcs/requirements/bonus/ftp/conf/\
+          vsftpd.conf.template:/etc/vsftpd/vsftpd.conf.template:ro"
+      - "wordpress:/var/ftp/${FTP_USER}"
+    environment: 
+      FTP_UID: ${FTP_UID}
+      FTP_GROUP: ${FTP_GROUP}
+      FTP_USER: ${FTP_USER}
+      FTP_PASSWORD_FILE: /run/secrets/ftp_password
+      FTP_PASV_MIN_PORT: ${FTP_PASV_MIN_PORT}
+      FTP_PASV_MAX_PORT: ${FTP_PASV_MAX_PORT}
+      SSL_CACERT: ${SSL_CACERT}
+      SSL_CERTIFICATE: ${SSL_CERTIFICATE}
+      SSL_KEY: ${SSL_KEY}
+    secrets:
+      - ftp_password
+    networks:
+      - ftp
+    ports:
+      - "21:21"
+      - "${FTP_PASV_MIN_PORT}-${FTP_PASV_MAX_PORT}:\
+        ${FTP_PASV_MIN_PORT}-${FTP_PASV_MAX_PORT}"
+    healthcheck:
+      test: ["CMD", "netstat", "-lnt", "|", "grep", ":21"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   django:
     build: 
       context: requirements/bonus/django
@@ -94,14 +136,14 @@ services:
           /etc/inception/ssl/${SSL_CERTIFICATE}:ro"
       - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_KEY}:\
           /etc/inception/ssl/${SSL_KEY}:ro"
-      - django:/var/www/inception
+      - django:/var/www/html
     environment:
       DJANGO_SECRET_KEY_FILE: /run/secrets/django_secret_key
       DJANGO_ALLOWED_HOSTS: ${DJANGO_DOMAIN_NAME}
       GUNICORN_CMD_ARGS: "--ca-certs=/etc/inception/ssl/${SSL_CACERT} \
         --certfile=/etc/inception/ssl/${SSL_CERTIFICATE} \
         --keyfile=/etc/inception/ssl/${SSL_KEY} \
-        --bind=[::]:8000 --workers=2"
+        --bind=0.0.0.0:8000 --workers=2"
     secrets:
        - django_secret_key
     networks:
@@ -122,7 +164,7 @@ services:
     volumes:
       - "/home/${LOGIN}/Inception/srcs/requirements/bonus/adminer/conf/\
           index.php:/etc/adminer/index.php:ro"
-      - adminer:/var/www/adminer
+      - adminer:/var/www/html
     environment:
       ADMINER_DESIGN: ${ADMINER_DESIGN}
     networks:
@@ -130,7 +172,10 @@ services:
       - mariadb
 
   uptime-kuma:
-    build: requirements/bonus/uptime-kuma
+    build: 
+      context: requirements/bonus/uptime-kuma
+      args:
+        UID: "1000"
     image: uptime-kuma
     depends_on:
       - wordpress
@@ -154,15 +199,15 @@ services:
       wordpress:
         aliases:
           - ${DOMAIN_NAME}
+      ftp:
+        aliases:
+          - ${FTP_DOMAIN_NAME}
       django:
         aliases:
           - ${DJANGO_DOMAIN_NAME}
       adminer:
         aliases:
           - ${ADMINER_DOMAIN_NAME}
-      uptime-kuma:
-        aliases:
-          - ${UPTIME_KUMA_DOMAIN_NAME}
     healthcheck:
       test: ["CMD", "/etc/uptime-kuma/extra/healthcheck"]
       start_period: 180s
@@ -183,10 +228,11 @@ services:
       - "/home/${LOGIN}/Inception/srcs/requirements/tools/${SSL_KEY}:\
           /etc/nginx/${SSL_KEY}:ro"
       - "/home/${LOGIN}/Inception/srcs/requirements/nginx/conf/http.d:\
-        /etc/nginx/templates:ro"
+          /etc/nginx/templates:ro"
       - wordpress:/var/www/html:ro
-      - django:/var/www/inception
-      - adminer:/var/www/adminer:ro
+      - wordpress:/var/www/${DOMAIN_NAME}/html:ro
+      - django:/var/www/${DJANGO_DOMAIN_NAME}/html:ro
+      - adminer:/var/www/${ADMINER_DOMAIN_NAME}/html:ro
     environment:
       NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/templates
       NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx/http.d 
@@ -216,6 +262,7 @@ networks:
   mariadb:
   redis:
   wordpress:
+  ftp:
   django:
   adminer:
   uptime-kuma:
@@ -229,6 +276,8 @@ secrets:
     file: ../secrets/redis_default_password.txt
   redis_password:
     file: ../secrets/redis_password.txt
+  ftp_password:
+    file: ../secrets/ftp_password.txt
   wordpress_admin_password:
     file: ../secrets/wordpress_admin_password.txt
   wordpress_user_password:
@@ -257,7 +306,7 @@ volumes:
       o: bind
       type: none
       device: "/home/${LOGIN}/data/wordpress"
-  
+
   django:
     driver: local
     driver_opts:

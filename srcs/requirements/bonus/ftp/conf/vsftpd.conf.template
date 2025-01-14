@@ -137,3 +137,5 @@ ssl_sslv3=NO
 ssl_ciphers=HIGH
 
 allow_writeable_chroot=YES
+
+seccomp_sandbox=NO

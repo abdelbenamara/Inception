@@ -4,7 +4,9 @@ include $(CURDIR)/srcs/.env
 
 DATA := /home/$(LOGIN)/data
 
-all:
+all: up
+
+up:
 	docker compose -f $(NAME) up --build --detach
 
 status:
@@ -19,6 +21,7 @@ logs:
 hosts:
 	sed -e 's/^\(127\.0\.0\.1\).*$$/\1\tlocalhost $(DOMAIN_NAME)/' \
 		-e 's/^\(127\.0\.0\.1.*\)$$/\1 www.$(DOMAIN_NAME)/'\
+		-e 's/^\(127\.0\.0\.1.*\)$$/\1 $(FTP_DOMAIN_NAME)/' \
 		-e 's/^\(127\.0\.0\.1.*\)$$/\1 $(DJANGO_DOMAIN_NAME)/' \
 		-e 's/^\(127\.0\.0\.1.*\)$$/\1 $(ADMINER_DOMAIN_NAME)/' \
 		-e 's/^\(127\.0\.0\.1.*\)$$/\1 $(UPTIME_KUMA_DOMAIN_NAME)/' \
@@ -33,4 +36,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: re fclean clean hosts logs down all
+.PHONY: re fclean clean hosts logs down up all

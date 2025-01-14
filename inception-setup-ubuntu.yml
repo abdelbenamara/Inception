@@ -43,11 +43,13 @@
         update_cache: true
         clean: true
 
-    - name: Install unattended-upgrades and sudo packages
+    - name: Install unattended-upgrades, sudo, git and make packages
       ansible.builtin.apt:
         name:
           - unattended-upgrades
           - sudo
+          - git
+          - make
         state: latest
 
     - name: Edit /etc/apt/apt.conf.d/02periodic
@@ -76,17 +78,9 @@
         - { key: 'iolog_dir', value: 'iolog_dir="/var/log/sudo"' }
         - { key: 'requiretty', value: 'requiretty' }
 
-    - name: Install make and git packages
-      ansible.builtin.apt:
-        name:
-          - make
-          - git
-        state: latest
-
     - name: Set dotfiles git directory
       ansible.builtin.set_fact:
         dotfiles_git_directory: "{{ ansible_user_dir }}/.dotfiles"
-      become: false
 
     - name: Download dotfiles
       ansible.builtin.git:
@@ -167,6 +161,7 @@
         path: "{{ ansible_user_dir }}/Inception/srcs/.env"
         regexp: '^LOGIN'
         line: "LOGIN={{ ansible_user_id }}"
+      become: false
 
     - name: Set common name (CN)
       ansible.builtin.set_fact:
@@ -250,7 +245,7 @@
     - name: Edit secrets
       ansible.builtin.lineinfile:
         path: "{{ ansible_user_dir }}/Inception/secrets/{{ item }}.txt"
-        regexp: "^.*"
+        regexp: '^.*$'
         line: "{{ lookup('ansible.builtin.password', '/dev/null', length=64) }}"
         create: true
       loop:
@@ -260,6 +255,7 @@
         - "redis_password"
         - "wordpress_admin_password"
         - "wordpress_user_password"
+        - "ftp_password"
         - "django_secret_key"
       become: false
 
@@ -282,6 +278,11 @@
         targets:
           - all
           - hosts
+    
+    - name: Install filezilla package
+      ansible.builtin.apt:
+        name: filezilla
+        state: latest
 
     - name: Remove dependencies that are no longer required
       ansible.builtin.apt:

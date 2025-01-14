@@ -15,7 +15,7 @@ main() {
         fi
 
         cp /etc/adminer/index.php index.php
-        chown adminer:adminer index.php
+        chown www-data:www-data index.php
         echo "Adminer v$ADMINER_VERSION initialized"
     fi
 

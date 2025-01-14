@@ -21,9 +21,9 @@ RUN set -eux \
 
 USER inception
 
-WORKDIR /var/www/inception
+WORKDIR /var/www/html
 
-VOLUME ["/var/www/inception"]
+VOLUME ["/var/www/html"]
 
 COPY --chown=root --chmod=755 tools/docker-entrypoint.sh /usr/local/bin/
 COPY --chown=inception --chmod=755 tools/inception /etc/inception/

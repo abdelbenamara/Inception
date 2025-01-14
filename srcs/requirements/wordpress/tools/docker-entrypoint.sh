@@ -13,7 +13,7 @@ main() {
 			local var
 
 			for var in DB_HOST DB_NAME DB_USER DB_PASSWORD_FILE \
-				REDIS_USER REDIS_PASSWORD_FILE \
+				REDIS_HOST REDIS_PORT REDIS_USER REDIS_PASSWORD_FILE \
 				URL TITLE ADMIN_USER ADMIN_EMAIL ADMIN_PASSWORD_FILE \
 				USER_LOGIN USER_EMAIL USER_PASSWORD_FILE; do
 				eval wp_var="\$WORDPRESS_"$var
@@ -32,8 +32,8 @@ main() {
 			fi
 
 			if wp config set FORCE_SSL_ADMIN "true" --raw \
-				&& wp config set WP_REDIS_HOST "redis" --quiet \
-				&& wp config set WP_REDIS_PORT "6379" --raw --quiet \
+				&& wp config set WP_REDIS_HOST "$WORDPRESS_REDIS_HOST" --quiet \
+				&& wp config set WP_REDIS_PORT "$WORDPRESS_REDIS_PORT" --raw --quiet \
 				&& wp config set WP_REDIS_PASSWORD \
 "['$WORDPRESS_REDIS_USER', '$(cat $WORDPRESS_REDIS_PASSWORD_FILE)']" \
 					--raw --quiet; then

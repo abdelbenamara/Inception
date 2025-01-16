@@ -111,7 +111,9 @@ services:
     secrets:
       - ftp_password
     networks:
-      - ftp
+      ftp:
+        aliases:
+          - ${FTP_DOMAIN_NAME}
     ports:
       - "21:21"
       - "${FTP_PASV_MIN_PORT}-${FTP_PASV_MAX_PORT}:\
@@ -180,7 +182,8 @@ services:
         UID: "1000"
     image: uptime-kuma
     depends_on:
-      - wordpress
+      ftp:
+        condition: service_healthy
     container_name: uptime-kuma
     restart: always
     volumes:
@@ -202,14 +205,15 @@ services:
         aliases:
           - ${DOMAIN_NAME}
       ftp:
-        aliases:
-          - ${FTP_DOMAIN_NAME}
       django:
         aliases:
           - ${DJANGO_DOMAIN_NAME}
       adminer:
         aliases:
           - ${ADMINER_DOMAIN_NAME}
+      uptime-kuma:
+        aliases:
+          - ${UPTIME_KUMA_DOMAIN_NAME}
     healthcheck:
       test: ["CMD", "/etc/uptime-kuma/extra/healthcheck"]
       start_period: 180s

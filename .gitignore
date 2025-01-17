@@ -1,6 +1,5 @@
 # Project
-srcs/.env
-*.ca
+.env
 *.crt
 *.key
 data/
